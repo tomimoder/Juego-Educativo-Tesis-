@@ -3,10 +3,14 @@ import TangramPiece from './TangramPiece';
 
 const TangramBoard = ({ updateSolution, onPieceMoved, socket }) => {
     const initialPieces = [
-        { id: 1, shape: 'triangle', initialPosition: { x: 50, y: 50 } },
-        { id: 2, shape: 'square', initialPosition: { x: 150, y: 50 } },
-        { id: 3, shape: 'parallelogram', initialPosition: { x: 100, y: 150 } },
-    ];
+        { id: 1, shape: 'large-triangle', initialPosition: { x: 50, y: 50 } }, // Triángulo grande 1
+        { id: 2, shape: 'large-triangle', initialPosition: { x: 200, y: 50 } }, // Triángulo grande 2
+        { id: 3, shape: 'medium-triangle', initialPosition: { x: 600, y: 50 } }, // Triángulo mediano
+        { id: 4, shape: 'small-triangle', initialPosition: { x: 350, y: 50 } }, // Triángulo pequeño 1
+        { id: 5, shape: 'small-triangle', initialPosition: { x: 700, y: 50 } }, // Triángulo pequeño 2
+        { id: 6, shape: 'parallelogram', initialPosition: { x: 400, y: 50 } }, // Cuadrado
+        { id: 7, shape: 'diamond', initialPosition: { x: 500, y: 50 } }, // Diamond
+    ];  
 
     const boardRef = useRef(null);
     const [pieces, setPieces] = useState(initialPieces);

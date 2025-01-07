@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import TangramBoard from '../Tangram/TangramBoard';
+import RandomBackgroundDiv from '../Images/images';
 import axios from 'axios';
 
 function GameInterface() {
@@ -333,7 +334,9 @@ function GameInterface() {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="font-bold">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
+          <span className="font-bold">
+            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+          </span>
         </div>
         <div className="level font-bold">Nivel {levelData.level}</div>
         <div className="coins flex items-center">
@@ -343,38 +346,39 @@ function GameInterface() {
           </svg>
         </div>
       </div>
-
+  
       <div className="flex-grow flex">
         <div className="w-3/4 p-4 flex flex-col">
+          {levelData.level === 1 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+              <div
+                className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4"
+                style={{ height: '550px', width: '650px' }}
+              ></div>
+              <RandomBackgroundDiv />
+            </div>
+          ) : (
+            <div
+              className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4"
+              style={{ height: '550px', width: '100%' }}
+            ></div>
+          )}
+  
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
-          </div>
-          <div className="bg-green-300 rounded-lg p-4">
-            <form onSubmit={handleSubmit} className="flex">
-              <input
-                type="text"
-                value={userInput}
-                onChange={handleInputChange}
-                placeholder="Escribe......"
-                className="flex-grow p-2 rounded-l-lg"
+            {isPiecesViable && (
+              <TangramBoard
+                updateSolution={updateUserSolution}
+                onPieceMoved={handlePieceMoved}
+                socket={socket}
               />
-              <button onClick={() => {
-                console.log("Boton validar presionado");
-                validateSolution();
-              }} className="bg-green-500 text-white p-2 rounded-r-lg">
-                Validar Solucion
-              </button>
-              <p>Puntaje: {score}%</p>
-            </form>
+            )}
           </div>
         </div>
-
+  
         <div className="w-1/4 p-4 flex flex-col">
           <div className={`bg-green-200 rounded-lg p-4 mb-4 ${isInstructionsVisible ? '' : 'hidden'}`}>
             <h2 className="font-bold mb-2">Instrucciones</h2>
             <p>{levelData.instructions}</p>
-          </div>
-          <div className={"flex-grow bg-white rounded-lg shadow-lg p-4 mb-4"}>
-            {isPiecesViable && <TangramBoard updateSolution={updateUserSolution} onPieceMoved={handlePieceMoved} socket={socket}/>}
           </div>
           <div className="flex justify-between mb-4">
             <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg">
@@ -383,7 +387,7 @@ function GameInterface() {
             <button onClick={toggleChat} className="bg-blue-500 text-white p-2 rounded-lg">
               {isChatVisible ? 'Ocultar Chat' : 'Mostrar Chat'}
             </button>
-            {levelData.id == 1 && (
+            {levelData.level === 1 && (
               <button onClick={togglePiecesViability} className="bg-yellow-500 text-white p-2 rounded-lg">
                 {isPiecesViable ? 'Ocultar Piezas' : 'Mostrar Piezas'}
               </button>
@@ -401,8 +405,8 @@ function GameInterface() {
                     {messages.map((msg, index) => {
                       const isCurrentUser = currentUser && msg.userId === currentUser.id;
                       return (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className={`message p-2 mb-2 rounded ${
                             isCurrentUser ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
                           }`}
@@ -425,23 +429,23 @@ function GameInterface() {
                       placeholder="Escribe un mensaje..."
                       className="w-full p-3 pr-12 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    <button 
+                    <button
                       type="submit"
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700"
                     >
-                      <svg 
-                        width="24" 
-                        height="24" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
                         xmlns="http://www.w3.org/2000/svg"
                         className="transform rotate-90"
                       >
-                        <path 
-                          d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
+                        <path
+                          d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                       </svg>
@@ -454,7 +458,7 @@ function GameInterface() {
         </div>
       </div>
     </div>
-  );
+  );   
 }
 
 export default GameInterface;

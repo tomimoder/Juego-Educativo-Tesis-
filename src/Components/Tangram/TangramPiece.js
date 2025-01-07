@@ -7,17 +7,25 @@ const TangramPiece = ({ shape, initialPosition, id, onDragStop }) => {
 
     // Definir formas y colores según el tipo de figura
     switch (shape) {
-        case 'triangle':
-            svgPath = "M 0 100 L 100 100 L 50 0 Z";
-            fillColor = "blue";
-            break;
-        case 'square':
-            svgPath = "M 0 0 L 100 0 L 100 100 L 0 100 Z";
+        case 'large-triangle': // Triángulo grande
+            svgPath = "M 0 0 L 200 0 L 100 100 Z";
             fillColor = "red";
             break;
-        case 'parallelogram':
-            svgPath = "M 0 0 L 100 25 L 75 100 L -25 75 Z";
+        case 'medium-triangle': // Triángulo mediano
+            svgPath = "M 0 0 L 100 0 L 50 50 Z";
             fillColor = "green";
+            break;
+        case 'small-triangle': // Triángulo pequeño
+            svgPath = "M 0 0 L 50 0 L 25 25 Z";
+            fillColor = "purple";
+            break;
+        case 'diamond': // Diamante
+            svgPath = "M 0 50 L 50 0 L 100 50 L 50 100 Z";
+            fillColor = "gray";
+            break;
+        case 'parallelogram': // Paralelogramo
+            svgPath = "M 0 10 H 50 L 75 50 L 50 50 H 0 L 25 50 Z";
+            fillColor = "blue";
             break;
         default:
             svgPath = "";
@@ -38,3 +46,5 @@ const TangramPiece = ({ shape, initialPosition, id, onDragStop }) => {
 };
 
 export default TangramPiece;
+
+

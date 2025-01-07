@@ -7,6 +7,7 @@ import LevelSelection from './Components/Levels/LevelSelection';
 import GameInterface from './Components/Games/GameInterface';
 import AdminDashboard from './Components/Admin/AdminDashboard';
 import process from 'process';
+import Test from './Components/Tangram/test';
 window.process = process;
 
 
@@ -19,6 +20,7 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/levels" element={<LevelSelection />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/test" element={<Test />} />
       </Routes>
     </Router>
   );
