@@ -360,7 +360,7 @@ function GameInterface() {
           ) : (
             <div
               className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4"
-              style={{ height: '550px', width: '100%' }}
+              style={{ height: '550px', width: '1400px' }}
             ></div>
           )}
   
