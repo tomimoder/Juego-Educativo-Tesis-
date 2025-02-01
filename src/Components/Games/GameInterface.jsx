@@ -27,6 +27,7 @@ function GameInterface() {
   const [correctSolutions, setCorrectSolutions] = useState([]);
   const [score, setScore] = useState(0);
   const [boardDimensions, setBoardDimensions] = useState({width: 0, height: 0})
+  const [figuraActual, setFiguraActual] = useState('null');
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable);
 
@@ -34,7 +35,54 @@ function GameInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const FIGURAS_NIVEL3 = {
+    'gato': {
+      piezas: [
+        { id: 3, x: 571, y: -403, rotation: 90},
+        { id: 4, x: 604, y: -508, rotation: 90},
+        { id: 5, x: 548, y: -508, rotation: -90},
+        { id: 7, x: 575, y: -494, rotation: 0},
+      ]
+    },
+    'tortuga': {
+      piezas: [
+        { id: 1, x: 401, y: -326, rotation: -45},
+        { id: 2, x: 362, y: -365, rotation: 135},
+        { id: 3, x: 326, y: -338, rotation: 90},
+        { id: 4, x: 352, y: -256, rotation: 180},
+      ]
+    },
+    'casa': {
+      piezas: [
+        { id: 2, x: 443, y: -300, rotation: 0},
+        { id: 3, x: 411, y: -263, rotation: 45},
+        { id: 4, x: 526, y: -243, rotation: 180},
+        { id: 5, x: 554, y: -271, rotation: 90},
+      ]
+    }
+  };
+
+
   useEffect(scrollToBottom, [messages]);
+
+  const [isFiguraSeleccionada, setIsFiguraSeleccionada] = useState(false);
+
+useEffect(() => {
+  
+  if (levelData?.level === 3 && !isFiguraSeleccionada) {
+    
+    const figuras = Object.keys(FIGURAS_NIVEL3);
+    
+
+    const figuraAleatoria = figuras[Math.floor(Math.random() * figuras.length)];
+    
+
+    setFiguraActual(FIGURAS_NIVEL3[figuraAleatoria]);
+    setIsFiguraSeleccionada(true); // Marca como seleccionada
+  }
+}, [levelData, isFiguraSeleccionada]);
+
+  
 
   const initializeSocket = useCallback(() => {
     const newSocket = io('http://localhost:3001', {
@@ -327,6 +375,9 @@ function GameInterface() {
     return <div>Cargando...</div>;
   }
 
+
+
+
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
@@ -366,11 +417,13 @@ function GameInterface() {
   
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
             {isPiecesViable && (
-              <TangramBoard
-                updateSolution={updateUserSolution}
-                onPieceMoved={handlePieceMoved}
-                socket={socket}
-              />
+              <TangramBoard 
+              updateSolution={updateUserSolution} 
+              onPieceMoved={handlePieceMoved} 
+              socket={socket} 
+              piezasBloqueadas={figuraActual?.piezas || []} 
+              nivelActual={levelData?.level}
+            />
             )}
           </div>
         </div>
