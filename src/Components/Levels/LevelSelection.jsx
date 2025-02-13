@@ -39,12 +39,13 @@ export default function LevelSelection() {
     const fetchLevels = async () => {
       try {
         setLoading(true);
-        const userString = localStorage.getItem('user');
-        if (!userString) {
+        const userId = localStorage.getItem('userId');
+          const nombre = localStorage.getItem('nombre');
+          const apellido = localStorage.getItem('apellido');
+        if (!userId || !nombre || !apellido) {
           throw new Error('User not found in local storage');
         }
-        const user = JSON.parse(userString);
-        const userId = user.id;
+        const user = { id: userId, nombre, apellido };
 
         const response = await fetch(`http://localhost:3001/api/levels/progress/${userId}`);
         
@@ -68,12 +69,14 @@ export default function LevelSelection() {
 
   const handleLevelSelect = async (levelId) => {
     try {
-      const userString = localStorage.getItem('user');
-      if (!userString) {
-        throw new Error('User not found in local storage');
-      }
-      const user = JSON.parse(userString);
-      const userId = user.id;
+      const userId = localStorage.getItem('userId');
+      const nombre = localStorage.getItem('nombre');
+      const apellido = localStorage.getItem('apellido');
+    if (!userId || !nombre || !apellido) {
+      throw new Error('User not found in local storage');
+    }
+    const user = { id: userId, nombre, apellido };
+      
 
       const response = await fetch('http://localhost:3001/api/levels/unlock', {
         method: 'POST',
