@@ -78,9 +78,13 @@ function initializeSocket(server) {
       }
     });
 
-    socket.on('pieceMoved', ({ groupId, pieceId, position }) => {
-      socket.to(`chatGroup_${groupId}`).emit('pieceMoved', { pieceId, position });
-    });
+    socket.on('pieceMoved', ({ groupId, pieceId, position, rotation }) => {
+      console.log(`📡 Servidor retransmitiendo: Pieza ${pieceId} en grupo ${groupId}`);
+      console.log(`📍 Posición recibida -> x: ${position?.x}, y: ${position?.y}, rotación: ${rotation}`);
+  
+      socket.to(`chatGroup_${groupId}`).emit('pieceMoved', { pieceId, position, rotation });
+  });
+  
 
     socket.on("sendMessage", async (message) => {
       const { chatGroupId, content, userId, nombre, apellido } = message;
@@ -115,6 +119,24 @@ function initializeSocket(server) {
         waitingUser = null;
       }
     });
+
+    socket.on("requestRandomSolution", async ({ groupId }) => {
+      try {
+          const connection = await pool.getConnection();
+          const [solution] = await connection.query(
+              `SELECT solution_data FROM usertangramsolutions ORDER BY RAND() LIMIT 1`
+          );
+          connection.release();
+  
+          if (solution.length > 0) {
+              console.log(`📡 Enviando solución aleatoria al grupo ${groupId}:`, solution[0].solution_data);
+              io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", solution[0].solution_data);
+          }
+      } catch (error) {
+          console.error("❌ Error obteniendo solución aleatoria:", error);
+      }
+  });
+  
   });
 
   return io;

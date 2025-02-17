@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TangramPiece from './TangramPiece';
 
-const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual }) => {
-    const initialPieces = [ // se ajusta para el posicionamiento de las piezas 
+const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], rotation }) => {
+    const initialPieces = [
         { id: 1, shape: 'large-triangle', initialPosition: { x: 10, y: 10 }, rotation: 0 },
         { id: 2, shape: 'large-triangle', initialPosition: { x: 150, y: 10 }, rotation: 0 },
         { id: 3, shape: 'medium-triangle', initialPosition: { x: 320, y: 10 }, rotation: 0 },
@@ -13,6 +13,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     ];
 
     const boardRef = useRef(null);
+    const hasAppliedSolution = useRef(false); // Evita que la solución se vuelva a aplicar después de la primera vez.
 
     const [pieces, setPieces] = useState(() => {
         return initialPieces.map(piece => {
@@ -24,92 +25,128 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
                     rotation: bloqueada.rotation,
                     position: { x: bloqueada.x, y: bloqueada.y }
                 }
-                : piece;
+                : { ...piece, position: piece.initialPosition };
         });
     });
-    
-    
 
-    // Listener para los eventos pieceMoved
+    // Aplicar solución inicial en el nivel 4
+    useEffect(() => {
+        if (nivelActual === 4 && solucionInicial.length > 0 && !hasAppliedSolution.current) {
+            console.log("Aplicando solución inicial:", solucionInicial);
+            
+            setPieces(prevPieces =>
+                prevPieces.map(piece => {
+                    const solucionPieza = solucionInicial.find(p => p.shape === piece.shape);
+                    
+                    if (solucionPieza && solucionPieza.coordenadas.length > 0) {
+                        return {
+                            ...piece,
+                            initialPosition: { 
+                                x: solucionPieza.coordenadas[0].x || 0, 
+                                y: solucionPieza.coordenadas[0].y || 0 
+                            },
+                            rotation: solucionPieza.orientacion || 0,
+                            position: { 
+                                x: solucionPieza.coordenadas[0].x || 0, 
+                                y: solucionPieza.coordenadas[0].y || 0 
+                            }
+                        };
+                    }
+                    return piece;
+                })
+            );
+
+            hasAppliedSolution.current = true; // Marcar que la solución ya fue aplicada
+        }
+    }, [solucionInicial, nivelActual]);
+
+    // Escuchar eventos de movimiento de pieza desde el servidor
     useEffect(() => {
         if (socket) {
-            socket.on('pieceMoved', ({ pieceId, position }) => {
+            socket.on("pieceMoved", ({ pieceId, position, rotation }) => {
+                console.log(`📥 Recibido movimiento de pieza ${pieceId} en TangramBoard: x:${position.x}, y:${position.y}, rotation:${rotation}`);
+
                 setPieces(prevPieces =>
                     prevPieces.map(piece =>
-                        piece.id === pieceId ? { ...piece, position } : piece
+                        piece.id === pieceId
+                            ? { ...piece, position: { x: position.x, y: position.y }, rotation: rotation }
+                            : piece
                     )
                 );
             });
-        }
 
-        // Cleanup para eliminar el listener
-        return () => {
-            if (socket) {
-                socket.off('pieceMoved');
-            }
-        };
+            return () => {
+                socket.off("pieceMoved");
+            };
+        }
     }, [socket]);
 
-    useEffect(() => {
-        setPieces(prevPieces =>
-            prevPieces.map(piece => {
-                const bloqueada = piezasBloqueadas.find(p => p.id === piece.id);
-                return bloqueada
-                    ? {
-                        ...piece,
-                        position: { x: bloqueada.x, y: bloqueada.y },
-                        rotation: bloqueada.rotation
-                    }
-                    : piece;
-            })
-        );
-    }, [piezasBloqueadas]);
-    
-    
-
-    // Dentro del componente TangramBoard, modifica la función handleDragStop:
+    // Función para manejar el movimiento de las piezas
     const handleDragStop = (id, newPosition) => {
         if (nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return; // Bloquea piezas en nivel 3
     
-        setPieces(prevPieces =>
-            prevPieces.map(piece =>
+        console.log(`📌 Pieza ${id} movida a`, newPosition);
+    
+        if (!newPosition || typeof newPosition !== 'object' || newPosition.x === undefined || newPosition.y === undefined) {
+            console.error("❌ Error: newPosition no tiene la estructura esperada:", newPosition);
+            return;
+        }
+    
+        setPieces(prevPieces => {
+            const updatedPieces = prevPieces.map(piece =>
                 piece.id === id ? { ...piece, position: newPosition } : piece
-            )
-        );
+            );
     
-        onPieceMoved(id, newPosition);
+            const movedPiece = updatedPieces.find(piece => piece.id === id);
+            const pieceRotation = movedPiece ? movedPiece.rotation : 0; // 🔥 Asegurar rotación válida
     
-        const solution = pieces.map(piece => ({
-            shape: piece.shape,
-            coordenadas: [piece.position || piece.initialPosition],
-            orientacion: piece.rotation || 0,
-        }));
+            // 🔥 Solo emitir si el nivel es 2 o 4
+            if (nivelActual === 2 || nivelActual === 4) {
+                console.log(`📤 Emitiendo movimiento: Pieza ${id} a x:${newPosition.x}, y:${newPosition.y}, rotación: ${pieceRotation}`);
+                onPieceMoved(id, { x: newPosition.x, y: newPosition.y }, pieceRotation);
+            }
     
-        updateSolution(solution);
+            // Actualizar la solución
+            const updatedSolution = updatedPieces.map(piece => ({
+                shape: piece.shape,
+                coordenadas: [piece.position],
+                orientacion: piece.rotation || 0
+            }));
+    
+            updateSolution(updatedSolution);
+    
+            return updatedPieces;
+        });
     };
+    
+    
 
-// Agrega este useEffect para monitorear todos los cambios:
-/*useEffect(() => {
-    console.log("Posiciones actualizadas de todas las piezas:", 
-        pieces.map(p => ({
-            id: p.id,
-            x: p.position?.x || p.initialPosition.x,
-            y: p.position?.y || p.initialPosition.y,
-            rotación: p.rotation
-        }))
-    );
-}, [pieces]);*/ // Se ejecutará cada vez que pieces cambie
-
+    // Función para rotar una pieza
     const handleRotatePiece = (id, angle) => {
         if (nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
-        setPieces(prevPieces =>
-            prevPieces.map(piece =>
+    
+        setPieces(prevPieces => {
+            const updatedPieces = prevPieces.map(piece =>
                 piece.id === id
                     ? { ...piece, rotation: (piece.rotation + angle) % 360 }
                     : piece
-            )
-        );
+            );
+    
+            const rotatedPiece = updatedPieces.find(piece => piece.id === id);
+            const newRotation = rotatedPiece ? rotatedPiece.rotation : 0; // 🔥 Nueva rotación antes de emitir
+    
+            const piecePosition = rotatedPiece ? rotatedPiece.position : { x: 0, y: 0 };
+    
+            // 🔥 Solo emitir si el nivel es 2 o 4
+            if (nivelActual === 2 || nivelActual === 4) {
+                console.log(`📤 Emitiendo rotación: Pieza ${id} a rotación ${newRotation}`);
+                onPieceMoved(id, piecePosition, newRotation);
+            }
+    
+            return updatedPieces;
+        });
     };
+    
     
 
     return (
@@ -119,10 +156,9 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
             position: 'relative',
             minHeight: '163px'  
         }}>
-            {/* Área principal del juego */}
             <div style={{
                 width: '100%',
-                height: 'calc(100% - 30px)', // Reducido el espacio reservado para el board inferior
+                height: 'calc(100% - 30px)',
                 position: 'relative'
             }}>
                 {pieces.map(piece => (
@@ -137,7 +173,6 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
                 ))}
             </div>
 
-            {/* Board inferior con las piezas */}
             <div style={{ 
                 width: '100%',
                 height: '50px', 
@@ -146,7 +181,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
                 position: 'absolute',
                 bottom: 0,
                 left: 0,
-                padding: '10px', // Reducido el padding
+                padding: '10px',
                 boxShadow: '0 -2px 5px rgba(0,0,0,0.05)',
                 display: 'flex',
                 justifyContent: 'center',
