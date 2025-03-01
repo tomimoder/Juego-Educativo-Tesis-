@@ -53,38 +53,126 @@ const saveUserSolution = async (req, res) => {
 }
 
 const getLatestSolutions = async (req, res) => {
-    const  levelId = req.params.levelId;
-    const currentUserId = req.params.userId;
-
-    try{
+    const levelId = req.params.levelId;
+    const currentUserId = req.query.userId;
+    
+    try {
+        // Obtener solo la última solución de cada usuario
         const [solutions] = await pool.query(
             `SELECT DISTINCT
-                UserTangramSolutions.id,
-                UserTangramSolutions.solution_data,
-                UserTangramSolutions.description,
-                UserTangramSolutions.created_at,
+                ut.*,
                 Users.nombre,
-                Users.apellido,
-                Users.id as user_id
-            FROM UserTangramSolutions 
-            JOIN Users ON UserTangramSolutions.user_id = Users.id
-            WHERE UserTangramSolutions.level_id = ?
-            AND UserTangramSolutions.user_id != ?
-            AND UserTangramSolutions.id IN (
-                SELECT MAX(id)
+                Users.apellido
+            FROM UserTangramSolutions ut
+            INNER JOIN (
+                SELECT user_id, MAX(created_at) as max_date
                 FROM UserTangramSolutions
+                WHERE level_id = ?
                 GROUP BY user_id
-            )
-            ORDER BY UserTangramSolutions.created_at DESC
-            LIMIT 10`,
-            [levelId, currentUserId]
+            ) latest ON ut.user_id = latest.user_id 
+                     AND ut.created_at = latest.max_date
+            JOIN Users ON ut.user_id = Users.id
+            WHERE ut.level_id = ?
+                AND ut.user_id != ?
+            ORDER BY ut.created_at DESC`,
+            [levelId, levelId, currentUserId]
         );
-        res.json(solutions);
-    } catch(error){
-        console.log("Error fetching latest solutions", error);
-        res.status(500).json({ message: "Error fetching latest solutions"});
-    }   
+        
+        res.json({
+            solutions,
+            total: solutions.length
+        });
+    } catch (error) {
+        console.error("Error fetching solutions:", error);
+        res.status(500).json({ message: "Error fetching solutions" });
+    }
 };
+
+
+const rateSolution = async (req, res) => {
+    const { solutionId, userId, rating, comment } = req.body;
+    
+    try {
+        await pool.query('START TRANSACTION');
+
+        await pool.query(
+            `INSERT INTO SolutionRatings (solution_id, user_id, rating, comment)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE rating = ?, comment = ?`,
+            [solutionId, userId, rating, comment, rating, comment]
+        );
+
+        const [ratings] = await pool.query(
+            `SELECT AVG(rating) as avg_rating, COUNT(*) as total
+             FROM SolutionRatings
+             WHERE solution_id = ?`,
+            [solutionId]
+        );
+
+        await pool.query(
+            `UPDATE UserTangramSolutions 
+             SET average_rating = ?, total_ratings = ?
+             WHERE id = ?`,
+            [ratings[0].avg_rating, ratings[0].total, solutionId]
+        );
+
+        await pool.query('COMMIT');
+
+        res.json({
+            message: "Rating saved successfully",
+            newAverage: ratings[0].avg_rating,
+            totalRatings: ratings[0].total
+        });
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error("Error saving rating:", error);
+        res.status(500).json({ message: "Error saving rating" });
+    }
+};
+
+const checkUserRating = async (req, res) => {
+    const { solutionId, userId } = req.params;
+    
+    try {
+        const [rating] = await pool.query(
+            'SELECT * FROM SolutionRatings WHERE solution_id = ? AND user_id = ?',
+            [solutionId, userId]
+        );
+        
+        res.json({ hasRated: rating.length > 0 });
+    } catch (error) {
+        console.error("Error checking rating:", error);
+        res.status(500).json({ message: "Error checking rating" });
+    }
+};
+
+const getAverageRatings = async (req, res) => {
+    try {
+        console.log("🔍 getAverageRatings: La función ha sido llamada");
+
+        const [ratings] = await pool.query(`
+            SELECT 
+                uts.average_rating, 
+                uts.total_ratings, 
+                uts.user_id, 
+                COALESCE(u.nombre, 'Desconocido') AS nombre, 
+                COALESCE(u.apellido, 'Desconocido') AS apellido
+            FROM UserTangramSolutions uts
+            LEFT JOIN users u ON uts.user_id = u.id
+            ORDER BY uts.average_rating DESC
+        `);
+
+        console.log("📌 Datos obtenidos de la base de datos:", ratings);
+
+        res.json({ ratings });
+    } catch (error) {
+        console.error("❌ Error fetching average ratings:", error);
+        res.status(500).json({ message: "Error fetching average ratings" });
+    }
+};
+
+
+
 
 
 const getRandomSolutionFromAll = async (req, res) => {
@@ -111,5 +199,8 @@ module.exports = {
     getSolution,
     saveUserSolution,
     getLatestSolutions,
-    getRandomSolutionFromAll
+    getRandomSolutionFromAll,
+    rateSolution,
+    checkUserRating,
+    getAverageRatings
 }

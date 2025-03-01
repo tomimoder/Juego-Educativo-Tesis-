@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 
 export default function Login({ onLogin }) {
@@ -56,45 +57,49 @@ export default function Login({ onLogin }) {
     e.preventDefault();
   
     const student = students.find(s => s.id.toString() === selectedStudent);
-  
     if (!student) {
-      setError('Por favor, selecciona un estudiante válido.');
+      setError("Por favor, selecciona un estudiante válido.");
       return;
     }
   
     try {
-      const response = await fetch('http://localhost:3001/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("http://localhost:3001/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🔥 Asegurar que las cookies se envíen
         body: JSON.stringify({ 
           schoolId: selectedSchool, 
-          userId: student.id,
           nombre: student.nombre, 
           apellido: student.apellido 
         }),
       });
   
-      const data = await response.json();
-  
       if (!response.ok) {
-        setError(data.error || 'Credenciales inválidas, intenta de nuevo.');
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || "Credenciales inválidas, intenta de nuevo.");
         return;
       }
   
-      // Guardar datos en localStorage
-      const { id, nombre, apellido } = data.user;
-      localStorage.setItem('userId', id);
-      localStorage.setItem('nombre', nombre);
-      localStorage.setItem('apellido', apellido);
+      const data = await response.json();
+      console.log("🔍 Respuesta del backend:", data);
   
-      // Puedes agregar una redirección o un estado de inicio de sesión aquí
-      console.log('Login successful');
-      navigate('/levels');
+      if (!data.user) { 
+        setError("Error: No se recibió información del usuario.");
+        return;
+      }
+  
+      // 🔥 Guardar en cookies con opciones seguras
+      Cookies.set("userSession", JSON.stringify(data.user), { 
+        expires: 1, 
+        sameSite: "Lax",
+        secure: false, // 🔥 Cambia a `true` en producción con HTTPS
+      });
+  
+      console.log("✅ Login exitoso");
+      navigate("/levels");
     } catch (error) {
-      console.error('Login failed:', error);
-      setError('Error de conexión, intenta de nuevo.');
+      console.error("❌ Login fallido:", error);
+      setError("Error de conexión, intenta de nuevo.");
     }
   };
 

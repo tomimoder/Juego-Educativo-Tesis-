@@ -5,6 +5,9 @@ import TangramBoard from "../Tangram/TangramBoard"
 import RandomBackgroundDiv from "../Images/images"
 import axios from "axios"
 import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
+import Cookies from "js-cookie"
+import SolutionsList from './SolutionsList';
+
 
 function GameInterface() {
   const [socket, setSocket] = useState(null)
@@ -25,9 +28,6 @@ function GameInterface() {
   const messagesEndRef = useRef(null)
   const [isPiecesViable, setIsPiecesViable] = useState(true)
   const [userSolution, setUserSolution] = useState([])
-  const [correctSolutions, setCorrectSolutions] = useState([])
-  const [score, setScore] = useState(0)
-  const [boardDimensions, setBoardDimensions] = useState({ width: 0, height: 0 })
   const [figuraActual, setFiguraActual] = useState("null")
   const [isTimeUpPopupOpen, setIsTimeUpPopupOpen] = useState(false)
   const [hasSavedSolution, setHasSavedSolution] = useState(false);
@@ -113,7 +113,7 @@ function GameInterface() {
       console.log("Socket connected")
       if (currentUser) {
         console.log("Emitting joinChat event")
-        newSocket.emit("joinChat", { userId: currentUser.id })
+        newSocket.emit("joinChat")
       }
     })
 
@@ -152,20 +152,28 @@ function GameInterface() {
   }, [currentUser])
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId")
-    const nombre = localStorage.getItem("nombre")
-    const apellido = localStorage.getItem("apellido")
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/api/me", {
+          method: "GET",
+          credentials: "include",
+        });
+    
+        if (!response.ok) throw new Error("Usuario no autenticado");
+    
+        const data = await response.json();
+        if (!data.id) throw new Error("Usuario inválido en la cookie");
+    
+        console.log("✅ Usuario obtenido desde el backend:", data);
+        setCurrentUser(data);
+      } catch (err) {
+        console.error("❌ Error obteniendo usuario:", err);
+        navigate("/");
+      }
+    };    
 
-    if (!userId || !nombre || !apellido) {
-      setError("No se encontró información del usuario")
-      navigate("/login")
-      return
-    }
-
-    const user = { id: userId, nombre, apellido }
-    console.log("Usuario recuperado del localStorage:", user)
-    setCurrentUser(user)
-  }, [navigate])
+    fetchUser();
+  }, [navigate]);
 
   useEffect(() => {
     if (currentUser) {
@@ -184,7 +192,7 @@ function GameInterface() {
   useEffect(() => {
     if (socket && currentUser) {
       console.log("Emitting joinChat event")
-      socket.emit("joinChat", { userId: currentUser.id })
+      socket.emit("joinChat")
     }
   }, [socket, currentUser])
 
@@ -211,68 +219,116 @@ function GameInterface() {
     }
   }, [levelId, location.state])
 
-
+  const fetchUser = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/me", {
+        method: "GET",
+        credentials: "include", // 🔥 Asegurar que la cookie se envíe con la petición
+      });
+  
+      if (!response.ok) throw new Error("Usuario no autenticado");
+  
+      const user = await response.json();
+      console.log("✅ Usuario obtenido desde la cookie:", user);
+      return user;
+    } catch (err) {
+      console.error("❌ Error obteniendo usuario:", err);
+      alert("Error: Usuario no autenticado. Inicia sesión nuevamente.");
+      return null;
+    }
+  };
 
 
   const handleSaveSolution = async () => {
     try {
-      const userId = localStorage.getItem("userId");
-      const description = prompt("Por favor, añade una breve descripción de tu solución, Que intentaste crear? ");
-
-      if(!description || description.trim() === ""){
-        alert("Por favor, añade una descripción válida");
+      const user = await fetchUser();
+      if (!user) {
+        alert("Usuario no autenticado");
         return;
       }
-
-      const cleanSOlutionData = userSolution.map(piece => ({
+  
+      const description = prompt("Por favor, añade una breve descripción de tu solución:");
+      if (!description || description.trim() === "") {
+        alert("Necesitas añadir una descripción");
+        return;
+      }
+  
+      // Guardamos todas las piezas de userSolution
+      const allPieces = userSolution.map((piece) => ({
         shape: piece.shape,
         coordenadas: piece.coordenadas,
-        orientacion: piece.orientacion
+        orientacion: piece.orientacion,
+        initialPosition: piece.initialPosition,
       }));
-
-      const response = await fetch('http://localhost:3001/api/user-solution', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+  
+      const response = await fetch("http://localhost:3001/api/user-solution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🔥 Asegurar que la cookie de sesión se envíe
         body: JSON.stringify({
-          userId,
+          userId: user.id, // Ahora se usa el `id` obtenido de la cookie
           levelId,
-          solutionData: cleanSOlutionData,
-          description: description.trim()
-        })
-
+          solutionData: allPieces,
+          description: description.trim(),
+        }),
       });
-
-      if(response.ok){
-        alert("Solución guardada correctamente");
+  
+      if (response.ok) {
+        alert("¡Solución guardada!");
         setHasSavedSolution(true);
         await fetchLatestSolutions();
-      } else{
+      } else {
         alert("Error al guardar la solución");
       }
-
-    }catch(error){
-      console.error("Error saving solution:", error);
+    } catch (error) {
+      console.error("❌ Error al guardar la solución:", error);
       alert("Error al guardar la solución");
     }
-  }
+  };
+
+
 
 
   const fetchLatestSolutions = async () => {
-    try{
-      const userId = localStorage.getItem("userId");
-      const response = await fetch(`http://localhost:3001/api/solutions/${levelId}?userId=${userId}`);
-      if(response.ok){
-        const data = await response.json();
-        setLatestSolutions(data);
-        setShowSolutions(true);
-      } else{
-        console.error("Error fetching latest solutions:", response.statusText);
+    try {
+      // 🔹 Obtener y decodificar la cookie
+      const userCookie = Cookies.get("userSession");
+      console.log(userCookie);
+      if (!userCookie) {
+        console.error("❌ Usuario no autenticado");
+        return;
       }
-
-    }catch(error){
-      console.error("Error fetching latest solutions:", error);
+  
+      const user = JSON.parse(userCookie); // ✅ Parsear la cookie sin decodeURIComponent
+      if (!user.id) {
+        console.error("❌ Usuario inválido en la cookie");
+        return;
+      }
+  
+      console.log("✅ Usuario obtenido desde cookie:", user);
+  
+      // 🔥 Hacer la petición al backend
+      const response = await fetch(`http://localhost:3001/api/solutions/${levelId}?userId=${user.id}`, {
+        method: "GET",
+        credentials: "include", // 🔥 Asegurar que la cookie se envíe
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Error obteniendo soluciones:", errorData.message || response.statusText);
+        return;
+      }
+  
+      const data = await response.json();
+      console.log("📌 Soluciones obtenidas:", data);
+  
+      setLatestSolutions(data);
+      setShowSolutions(true);
+    } catch (error) {
+      console.error("❌ Error al obtener las soluciones:", error);
     }
-  }
+  };
+  
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -422,38 +478,32 @@ useEffect(() => {
           </svg>
         </div>
       </div>
-
+  
       <div className="flex-grow flex">
         <div className="w-3/4 p-4 flex flex-col">
           {levelData.level === 1 ? (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <div
-                className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4"
-                style={{ height: '550px', width: '650px' }}
-              ></div>
+              <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '650px' }}></div>
               <RandomBackgroundDiv />
             </div>
           ) : (
-            <div
-              className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4"
-              style={{ height: '550px', width: '1400px' }}
-            ></div>
+            <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '1400px' }}></div>
           )}
-
+  
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
             {isPiecesViable && (
               <TangramBoard
-              updateSolution={updateUserSolution}
-              onPieceMoved={handlePieceMoved}
-              socket={socket}
-              piezasBloqueadas={figuraActual?.piezas || []}
-              nivelActual={levelData?.level}
-              solucionInicial={levelData?.level === 4 ? userSolution : []} // Agregamos esta prop
-          />
+                updateSolution={updateUserSolution}
+                onPieceMoved={handlePieceMoved}
+                socket={socket}
+                piezasBloqueadas={figuraActual?.piezas || []}
+                nivelActual={levelData?.level}
+                solucionInicial={levelData?.level === 4 ? userSolution : []}
+              />
             )}
           </div>
         </div>
-
+  
         <div className="w-1/4 p-4 flex flex-col">
           <div className={`bg-green-200 rounded-lg p-4 mb-4 ${isInstructionsVisible ? '' : 'hidden'}`}>
             <h2 className="font-bold mb-2">Instrucciones</h2>
@@ -473,82 +523,109 @@ useEffect(() => {
             )}
             {!hasSavedSolution ? (
               <button
-                  onClick={handleSaveSolution}
-                  className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
+                onClick={handleSaveSolution}
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
               >
-                  Guardar Solución
+                Guardar Solución
               </button>
             ) : (
               <button
-                  onClick={() => setShowSolutions(true)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium"
+                onClick={() => setShowSolutions(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium"
               >
-                  Ver Soluciones
+                Ver Soluciones
               </button>
             )}
           </div>
-          <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
-            <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
-              {error ? (
-                <div className="text-center text-red-600">{error}</div>
-              ) : waitingForPartner ? (
-                <div className="text-center text-gray-600">Esperando a otro jugador...</div>
-              ) : (
-                <>
-                  <div className="messages flex-grow overflow-y-auto mb-4">
-                    {messages.map((msg, index) => {
-                      const isCurrentUser = currentUser && msg.userId === currentUser.id;
-                      return (
-                        <div
-                          key={index}
-                          className={`message p-2 mb-2 rounded ${isCurrentUser ? 'bg-blue-100 ml-auto' : 'bg-gray-100'}`}
-                          style={{ maxWidth: '80%' }}
-                        >
-                          <div className="text-xs text-gray-600 mb-1">
-                            {isCurrentUser ? 'Tú' : `${msg.nombre} ${msg.apellido}`}
-                          </div>
-                          <div>{msg.content}</div>
-                        </div>
-                      );
-                    })}
+  
+          {(levelData.level === 2 || levelData.level === 4) && (
+  <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
+    <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
+      {error ? (
+        <div className="text-center text-red-600">{error}</div>
+      ) : waitingForPartner ? (
+        <div className="text-center text-gray-600">Esperando a otro jugador...</div>
+      ) : (
+        <>
+          <div className="messages flex-grow overflow-y-auto mb-4">
+            {messages.map((msg, index) => {
+              const isCurrentUser = currentUser && msg.userId === currentUser.id;
+              return (
+                <div
+                  key={index}
+                  className={`message p-2 mb-2 rounded ${
+                    isCurrentUser ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
+                  }`}
+                  style={{ maxWidth: '80%' }}
+                >
+                  <div className="text-xs text-gray-600 mb-1">
+                    {isCurrentUser ? 'Tú' : `${msg.nombre} ${msg.apellido}`}
                   </div>
-                </>
-              )}
-            </div>
+                  <div>{msg.content}</div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
           </div>
+          <form onSubmit={handleSendMessage} className="relative">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Escribe un mensaje..."
+              className="w-full p-3 pr-12 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="transform rotate-90"
+              >
+                <path
+                  d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </form>
+        </>
+      )}
+    </div>
+  </div>
+)}
         </div>
       </div>
-
+  
       {showSolutions && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-6 rounded-lg shadow-lg w-3/4 max-h-[80vh] overflow-y-auto">
-                <h3 className="text-lg font-bold mb-4">Últimas Soluciones</h3>
-                <div className="space-y-4">
-                    {latestSolutions.map((solution) => (
-                        <div key={solution.id} className="border p-4 rounded-lg">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="font-bold">{solution.nombre} {solution.apellido}</p>
-                                    <p className="text-gray-600">{new Date(solution.created_at).toLocaleString()}</p>
-                                    <p className="mt-2">{solution.description}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <button
-                    onClick={() => setShowSolutions(false)}
-                    className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                >
-                    Cerrar
-                </button>
-            </div>
-        </div>
-      )}
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="bg-white w-[100vw] h-[100vh] p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
+      <h3 className="text-xl font-bold mb-4">Últimas Soluciones</h3>
 
+      <SolutionsList levelId={levelId} />
+
+      <button
+        onClick={() => navigate('/levels')}
+        className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+)}
+  
       <TimeUpPopup isOpen={isTimeUpPopupOpen} onClose={handleCloseTimeUpPopup} />
     </div>
-);
+  );
+  
 
 }
 

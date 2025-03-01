@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import React from "react";
+import { Button } from "../ui/button"; // Importamos el botón reutilizable
 
 const LevelButton = ({ level, name, unlocked, stars, onClick }) => {
   return (
     <button
       onClick={onClick}
       className={`w-24 h-24 rounded-lg flex flex-col items-center justify-center ${
-        unlocked ? 'bg-purple-300 hover:bg-purple-400' : 'bg-gray-400'
+        unlocked ? "bg-purple-300 hover:bg-purple-400" : "bg-gray-400"
       }`}
       disabled={!unlocked}
     >
@@ -17,11 +19,11 @@ const LevelButton = ({ level, name, unlocked, stars, onClick }) => {
           <svg
             key={i}
             xmlns="http://www.w3.org/2000/svg"
-            className={`h-4 w-4 ${i < stars ? 'text-yellow-400' : 'text-gray-300'}`}
+            className={`h-4 w-4 ${i < stars ? "text-yellow-400" : "text-gray-300"}`}
             viewBox="0 0 20 20"
             fill="currentColor"
           >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
         ))}
       </div>
@@ -39,27 +41,32 @@ export default function LevelSelection() {
     const fetchLevels = async () => {
       try {
         setLoading(true);
-        const userId = localStorage.getItem('userId');
-          const nombre = localStorage.getItem('nombre');
-          const apellido = localStorage.getItem('apellido');
-        if (!userId || !nombre || !apellido) {
-          throw new Error('User not found in local storage');
-        }
-        const user = { id: userId, nombre, apellido };
+        const userResponse = await fetch("http://localhost:3001/api/me", {
+          method: "GET",
+          credentials: "include",
+        });
 
-        const response = await fetch(`http://localhost:3001/api/levels/progress/${userId}`);
-        
+        if (!userResponse.ok) throw new Error("Usuario no autenticado");
+
+        const user = await userResponse.json();
+        console.log("✅ Usuario obtenido desde sesión:", user);
+
+        const response = await fetch(`http://localhost:3001/api/levels/progress/${user.id}`, {
+          method: "GET",
+          credentials: "include",
+        });
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        console.log('Fetched levels:', data);
+        console.log("📌 Niveles obtenidos:", data);
         setLevels(data);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching levels:', err);
-        setError('Failed to load levels. Please try again.');
+        console.error("❌ Error obteniendo niveles:", err);
+        setError("No se pudieron cargar los niveles. Intenta nuevamente.");
         setLoading(false);
       }
     };
@@ -69,33 +76,48 @@ export default function LevelSelection() {
 
   const handleLevelSelect = async (levelId) => {
     try {
-      const userId = localStorage.getItem('userId');
-      const nombre = localStorage.getItem('nombre');
-      const apellido = localStorage.getItem('apellido');
-    if (!userId || !nombre || !apellido) {
-      throw new Error('User not found in local storage');
-    }
-    const user = { id: userId, nombre, apellido };
-      
+      const userResponse = await fetch("http://localhost:3001/api/me", {
+        method: "GET",
+        credentials: "include",
+      });
 
-      const response = await fetch('http://localhost:3001/api/levels/unlock', {
-        method: 'POST',
+      if (!userResponse.ok) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      const user = await userResponse.json();
+
+      if (!user || !user.id) {
+        throw new Error("Error: Datos de usuario inválidos en la sesión.");
+      }
+
+      console.log("✅ Usuario obtenido desde la sesión:", user);
+
+      const response = await fetch("http://localhost:3001/api/levels/unlock", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId, currentLevelId: levelId }),
+        credentials: "include",
+        body: JSON.stringify({ userId: user.id, currentLevelId: levelId }),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Navigate to the game interface with the selected level data
-      const selectedLevel = levels.find(level => level.level === levelId);
+      console.log(`🎮 Nivel ${levelId} desbloqueado con éxito`);
+
+      const selectedLevel = levels.find((level) => level.level === levelId);
+
+      if (!selectedLevel) {
+        throw new Error("Error: Nivel seleccionado no encontrado.");
+      }
+
       navigate(`/game/${levelId}`, { state: selectedLevel });
     } catch (err) {
-      console.error('Error unlocking next level:', err);
-      setError('Failed to start level. Please try again.');
+      console.error("❌ Error desbloqueando nivel:", err);
+      setError("No se pudo iniciar el nivel. Intenta nuevamente.");
     }
   };
 
@@ -111,8 +133,8 @@ export default function LevelSelection() {
     return (
       <div className="min-h-screen bg-yellow-200 flex items-center justify-center">
         <div className="text-2xl font-bold text-red-600">{error}</div>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Retry
@@ -124,7 +146,7 @@ export default function LevelSelection() {
   return (
     <div className="min-h-screen bg-yellow-200 flex items-center justify-center">
       <div className="bg-yellow-300 p-8 rounded-3xl shadow-lg">
-        <h1 className="text-4xl font-bold text-center mb-8 text-purple-800">LEVEL SELECTION</h1>
+        <h1 className="text-4xl font-bold text-purple-800 text-center mb-8">LEVEL SELECTION</h1>
         <div className="grid grid-cols-5 gap-4">
           {levels.map((level) => (
             <LevelButton
@@ -136,6 +158,13 @@ export default function LevelSelection() {
               onClick={() => handleLevelSelect(level.level)}
             />
           ))}
+        </div>
+
+        {/* Botón para ver los Ratings en otra página */}
+        <div className="flex items-center justify-center mt-6">
+          <Button variant="default" onClick={() => navigate("/ratings")}>
+            Ver Ratings
+          </Button>
         </div>
       </div>
     </div>
