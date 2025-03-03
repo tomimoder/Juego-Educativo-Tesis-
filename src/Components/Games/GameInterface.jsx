@@ -190,11 +190,11 @@ function GameInterface() {
   }, [currentUser, initializeSocket])
 
   useEffect(() => {
-    if (socket && currentUser) {
+    if (socket && currentUser && !chatGroupId) {
       console.log("Emitting joinChat event")
       socket.emit("joinChat")
     }
-  }, [socket, currentUser])
+  }, [socket, currentUser, chatGroupId])
 
   useEffect(() => {
     if (location.state) {
@@ -337,6 +337,7 @@ function GameInterface() {
           if (time - 1 <= 0) {
             clearInterval(timerId)
             setIsTimeUpPopupOpen(true)
+            handleSaveSolution();
             return 0
           }
           return time - 1
@@ -512,9 +513,6 @@ useEffect(() => {
           <div className="flex justify-between mb-4">
             <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg">
               {isInstructionsVisible ? 'Ocultar Instrucciones' : 'Mostrar Instrucciones'}
-            </button>
-            <button onClick={toggleChat} className="bg-blue-500 text-white p-2 rounded-lg">
-              {isChatVisible ? 'Ocultar Chat' : 'Mostrar Chat'}
             </button>
             {levelData.level === 1 && (
               <button onClick={togglePiecesViability} className="bg-yellow-500 text-white p-2 rounded-lg">

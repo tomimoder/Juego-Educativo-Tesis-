@@ -3,13 +3,13 @@ import TangramPiece from './TangramPiece';
 
 const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], rotation }) => {
     const initialPieces = [
-        { id: 1, shape: 'large-triangle', initialPosition: { x: 10, y: 10 }, rotation: 0 },
-        { id: 2, shape: 'large-triangle', initialPosition: { x: 150, y: 10 }, rotation: 0 },
-        { id: 3, shape: 'medium-triangle', initialPosition: { x: 320, y: 10 }, rotation: 0 },
-        { id: 4, shape: 'small-triangle', initialPosition: { x: 470, y: 10 }, rotation: 0 },
-        { id: 5, shape: 'small-triangle', initialPosition: { x: 590, y: 10 }, rotation: 0 },
-        { id: 6, shape: 'parallelogram', initialPosition: { x: 700, y: 0 }, rotation: 0 },
-        { id: 7, shape: 'diamond', initialPosition: { x: 820, y: 0 }, rotation: 0 }
+        { id: 1, shape: 'large-triangle', initialPosition: { x: 88, y: 56 }, rotation: 0 },
+        { id: 2, shape: 'large-triangle', initialPosition: { x: 262, y: 56 }, rotation: 0 },
+        { id: 3, shape: 'medium-triangle', initialPosition: { x: 457, y: 56 }, rotation: 0 },
+        { id: 4, shape: 'small-triangle', initialPosition: { x: 647, y: 56 }, rotation: 0 },
+        { id: 5, shape: 'small-triangle', initialPosition: { x: 823, y: 56 }, rotation: 0 },
+        { id: 6, shape: 'parallelogram', initialPosition: { x: 978, y: 30 }, rotation: 0 },
+        { id: 7, shape: 'diamond', initialPosition: { x: 1175, y: 56 }, rotation: 0 }
     ];
 
     const boardRef = useRef(null);

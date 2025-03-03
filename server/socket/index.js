@@ -3,6 +3,7 @@ const pool = require("../database");
 const cookie = require("cookie");
 
 let waitingUser = null;
+const groupSolutions = {};
 
 function initializeSocket(server) {
   const io = new Server(server, {
@@ -39,61 +40,70 @@ function initializeSocket(server) {
     // 🔹 Manejar evento `joinChat`
     socket.on("joinChat", async () => {
       console.log(`👤 Usuario ${user.id} intentando unirse al chat`);
-
+    
       let connection;
       try {
         connection = await pool.getConnection();
-
+    
+        // Buscar si el usuario ya está en un grupo de chat
         const [existingGroup] = await connection.query(
           `SELECT chat_group_id FROM UserChatGroups WHERE user_id = ?`, [user.id]
         );
-
+    
         if (existingGroup.length > 0) {
+          // Si el usuario ya tiene un grupo, se une a él
           const chatGroupId = existingGroup[0].chat_group_id;
           socket.join(`chatGroup_${chatGroupId}`);
-          console.log(`✅ Usuario ${user.id} se ha unido al grupo de chat ${chatGroupId}`);
+          console.log(`✅ Usuario ${user.id} ya está en el grupo ${chatGroupId}`);
           socket.emit("chatGroupJoined", { chatGroupId });
+          return;
+        }
+    
+        // Si no está en ningún grupo, intentamos emparejarlo
+        if (waitingUser === null) {
+          waitingUser = { socket, userId: user.id };
+          socket.emit("waiting", { message: "Esperando a otro usuario para emparejar..." });
+          console.log(`⌛ Usuario ${user.id} esperando pareja`);
         } else {
-          if (waitingUser === null) {
-            waitingUser = { socket, userId: user.id };
-            socket.emit("waiting", { message: "Esperando a otro usuario para emparejar..." });
-            console.log(`⌛ Usuario ${user.id} esperando pareja`);
-          } else {
-            const socket1 = waitingUser.socket;
-            const socket2 = socket;
-            const userId1 = waitingUser.userId;
-            const userId2 = user.id;
-            waitingUser = null;
-
-            const [result] = await connection.query("SELECT MAX(id) as maxId FROM ChatGroups");
-            const chatGroupId = (result[0].maxId || 0) + 1;
-
-            await connection.beginTransaction();
-            await connection.query(
-              "INSERT INTO ChatGroups (id, name) VALUES (?, ?)",
-              [chatGroupId, `Chat Group ${chatGroupId}`]
-            );
-
-            await connection.query(
-              "INSERT INTO UserChatGroups (chat_group_id, user_id) VALUES (?, ?), (?, ?)",
-              [chatGroupId, userId1, chatGroupId, userId2]
-            );
-
-            await connection.commit();
-
-            socket1.join(`chatGroup_${chatGroupId}`);
-            socket2.join(`chatGroup_${chatGroupId}`);
-
-            console.log(`✅ Emparejados en grupo ${chatGroupId} - Usuarios ${userId1} y ${userId2}`);
-            socket1.emit("chatGroupJoined", { chatGroupId });
-            socket2.emit("chatGroupJoined", { chatGroupId });
-          }
+          // Hay un usuario esperando, creamos un grupo para ambos
+          const socket1 = waitingUser.socket;
+          const socket2 = socket;
+          const userId1 = waitingUser.userId;
+          const userId2 = user.id;
+          waitingUser = null; // Reiniciar variable de espera
+    
+          // Crear nuevo grupo en la base de datos
+          const [result] = await connection.query("SELECT MAX(id) as maxId FROM ChatGroups");
+          const chatGroupId = (result[0].maxId || 0) + 1;
+    
+          await connection.beginTransaction();
+          await connection.query(
+            "INSERT INTO ChatGroups (id, name) VALUES (?, ?)",
+            [chatGroupId, `Chat Group ${chatGroupId}`]
+          );
+    
+          await connection.query(
+            "INSERT INTO UserChatGroups (chat_group_id, user_id) VALUES (?, ?), (?, ?)",
+            [chatGroupId, userId1, chatGroupId, userId2]
+          );
+    
+          await connection.commit();
+    
+          // Unir a los usuarios al grupo en Socket.IO
+          socket1.join(`chatGroup_${chatGroupId}`);
+          socket2.join(`chatGroup_${chatGroupId}`);
+    
+          console.log(`✅ Emparejados en grupo ${chatGroupId} - Usuarios ${userId1} y ${userId2}`);
+          socket1.emit("chatGroupJoined", { chatGroupId });
+          socket2.emit("chatGroupJoined", { chatGroupId });
         }
       } catch (error) {
         if (connection) await connection.rollback();
         console.error("❌ Error al unir al usuario al grupo de chat:", error);
         socket.emit("error", { message: "Error al unirse al grupo de chat. Intenta de nuevo." });
-        if (waitingUser && waitingUser.socket.id === socket.id) {
+        
+        // Si hay un error, aseguramos que `waitingUser` no quede en un estado inconsistente
+        if (waitingUser && waitingUser.userId === user.id) {
           waitingUser = null;
         }
       } finally {
@@ -146,14 +156,26 @@ function initializeSocket(server) {
     // 🔹 Evento para obtener una solución aleatoria
     socket.on("requestRandomSolution", async ({ groupId }) => {
       try {
+        // Si ya existe una solución para este grupo, la reutilizamos
+        if (groupSolutions[groupId]) {
+          console.log(`📡 Reenviando solución existente para grupo ${groupId}`);
+          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", groupSolutions[groupId]);
+          return;
+        }
+    
+        // Obtener una solución aleatoria de la base de datos
         const connection = await pool.getConnection();
         const [solution] = await connection.query(
           "SELECT solution_data FROM usertangramsolutions ORDER BY RAND() LIMIT 1"
         );
         connection.release();
-
+    
         if (solution.length > 0) {
-          console.log(`📡 Enviando solución aleatoria al grupo ${groupId}:`, solution[0].solution_data);
+          // Guardar la solución para este grupo
+          groupSolutions[groupId] = solution[0].solution_data;
+          console.log(`📡 Asignando nueva solución al grupo ${groupId}:`, solution[0].solution_data);
+    
+          // Enviar la misma solución a todos los jugadores del grupo
           io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", solution[0].solution_data);
         }
       } catch (error) {
