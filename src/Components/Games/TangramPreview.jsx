@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TangramPreview = ({ solutionData = [] }) => {
+const TangramPreview = ({ solutionData = [], panelWidth = 1400, panelHeight = 550 }) => {
   const getPieceShape = (shape) => {
     switch (shape) {
       case 'large-triangle':
@@ -43,8 +43,8 @@ const TangramPreview = ({ solutionData = [] }) => {
   return (
     <div
       style={{
-        width: '1316px',
-        height: '1250px',
+        width: `${panelWidth}px`,
+        height: `${panelHeight}px`,
         backgroundColor: '#f0f0f0',
         border: '1px solid #ccc',
         position: 'relative',
@@ -54,7 +54,7 @@ const TangramPreview = ({ solutionData = [] }) => {
         overflow: 'hidden'
       }}
     >
-      <div style={{ position: 'relative', transform: 'translate(20px, 0)' }}>
+      <div style={{ position: 'relative' }}>
         {solutionData.map((piece, index) => {
           if (!piece.coordenadas?.[0]) return null;
 

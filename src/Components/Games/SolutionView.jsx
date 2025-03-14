@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import TangramPreview from './TangramPreview';
 
 const formatRating = (rating) => {
   const numRating = parseFloat(rating);
   return isNaN(numRating) ? "0.0" : numRating.toFixed(1);
 };
 
-// Función para obtener el usuario autenticado desde la cookie
 const fetchUser = async () => {
   try {
     const response = await fetch("http://localhost:3001/api/me", {
@@ -26,18 +24,54 @@ const fetchUser = async () => {
   }
 };
 
+const getPieceShape = (shape) => {
+  switch (shape) {
+    case 'large-triangle':
+      return 'polygon(0 0, 100% 0, 50% 100%)';
+    case 'medium-triangle':
+      return 'polygon(0 0, 75% 0, 37.5% 75%)';
+    case 'small-triangle':
+      return 'polygon(0 0, 50% 0, 25% 50%)';
+    case 'diamond':
+      return 'polygon(50% 0, 100% 50%, 50% 100%, 0% 50%)';
+    case 'parallelogram':
+      return 'polygon(0 0, 80% 0, 100% 50%, 20% 50%)';
+    default:
+      return '';
+  }
+};
+
+const getPieceColor = (shape) => {
+  const colors = {
+    'large-triangle': 'red',
+    'medium-triangle': 'green',
+    'small-triangle': 'purple',
+    'diamond': 'gray',
+    'parallelogram': 'blue'
+  };
+  return colors[shape] || 'gray';
+};
+
+const getBaseSize = (shape) => {
+  const base = {
+    'large-triangle': { w: 200, h: 200 },
+    'medium-triangle': { w: 150, h: 150 },
+    'small-triangle': { w: 100, h: 100 },
+    'diamond': { w: 100, h: 100 },
+    'parallelogram': { w: 150, h: 100 }
+  };
+  return base[shape] || { w: 50, h: 50 };
+};
+
 const SolutionView = ({
   solution,
   onRatingUpdated,
-  previewWidth = 950,   
-  previewHeight = 550, 
 }) => {
   const [comment, setComment] = useState('');
   const [selectedRating, setSelectedRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Obtener el usuario autenticado al cargar el componente
   useEffect(() => {
     const loadUser = async () => {
       const user = await fetchUser();
@@ -46,159 +80,50 @@ const SolutionView = ({
     loadUser();
   }, []);
 
-  // Verificar si el usuario ya calificó la solución
-  useEffect(() => {
-    const checkUserRating = async () => {
-      if (!currentUser || currentUser.id === solution.user_id) return; // No verificar si es su propia solución
-
-      try {
-        const response = await fetch(`http://localhost:3001/api/check-rating/${solution.id}/${currentUser.id}`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          console.error("❌ Error verificando calificación:", response.statusText);
-          return;
-        }
-
-        const data = await response.json();
-        setHasRated(data.hasRated);
-      } catch (error) {
-        console.error("❌ Error:", error);
-      }
-    };
-
-    if (currentUser) {
-      checkUserRating();
-    }
-  }, [solution.id, currentUser]);
-
-  // Enviar la calificación
-  const handleSubmitRating = async () => {
-    if (selectedRating < 1) {
-      alert('Por favor selecciona una calificación');
-      return;
-    }
-
-    if (!currentUser) {
-      alert("Error: Usuario no autenticado");
-      return;
-    }
-
-    if (currentUser.id === solution.user_id) {
-      alert("No puedes calificar tu propia solución.");
-      return;
-    }
-
-    try {
-      const response = await fetch('http://localhost:3001/api/rate-solution', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: "include",
-        body: JSON.stringify({
-          solutionId: solution.id,
-          userId: currentUser.id,
-          rating: selectedRating,
-          comment: comment.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        alert('¡Calificación guardada!');
-        setComment('');
-        setSelectedRating(0);
-        setHasRated(true);
-        if (onRatingUpdated) onRatingUpdated();
-      } else {
-        alert('Error al guardar la calificación');
-      }
-    } catch (error) {
-      console.error("❌ Error al guardar la calificación:", error);
-      alert("Error al guardar la calificación");
-    }
-  };
-
   return (
-    <div 
-      className="border rounded-lg mb-4 p-4"
-      style={{ height: '700px' }} 
-    >
-      <div className="flex h-full gap-4">
-        {/* Vista del Tangram y detalles */}
-        <div className="flex-1 bg-white p-4 rounded overflow-auto">
-          <h3 className="font-bold text-xl mb-2">
-            {solution.nombre} {solution.apellido}
-          </h3>
-          <p className="text-gray-600 mb-2">
-            {new Date(solution.created_at).toLocaleString()}
-          </p>
-          <div 
-            className="border rounded mb-4"
-            style={{
-              width: `${previewWidth}px`,
-              height: `${previewHeight}px`,
-              overflow: 'auto'
-            }}
-          >
-            <TangramPreview 
-              solutionData={solution.solution_data}
-              panelWidth={previewWidth}
-              panelHeight={previewHeight}
-            />
-          </div>
-          <p className="mb-2">{solution.description}</p>
-          <p className="text-sm text-gray-600">
-            Calificación promedio: {formatRating(solution.average_rating)}
-            ({solution.total_ratings || 0} calificaciones)
-          </p>
-        </div>
+    <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
+      <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
+        <h2 className="font-bold">Solución Guardada</h2>
+      </div>
+      
+      <div className="flex-grow flex">
+        <div className="w-3/4 p-4 flex flex-col">
+          <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '1400px', position: 'relative' }}>
+            {solution.solution_data.map((piece, index) => {
+              if (!piece.coordenadas?.[0]) return null;
+              const { x, y } = piece.coordenadas[0];
+              const { w, h } = getBaseSize(piece.shape);
 
-        {/* Formulario de calificación */}
-        <div className="w-1/3 bg-gray-50 p-4 rounded">
-          {currentUser && currentUser.id === solution.user_id ? (
-            <div className="text-center p-4 bg-yellow-100 border border-yellow-500 rounded">
-              <p className="text-lg text-yellow-700 font-bold">No puedes calificar tu propia solución.</p>
-            </div>
-          ) : hasRated ? (
-            <div className="text-center p-4">
-              <p className="text-lg text-gray-600">Ya has calificado esta solución</p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-4">
-                <p className="font-bold mb-2">Calificación:</p>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setSelectedRating(star)}
-                      className={`text-2xl ${
-                        star <= selectedRating ? 'text-yellow-400' : 'text-gray-300'
-                      }`}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="mb-4">
-                <p className="font-bold mb-2">Comentario:</p>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  rows="3"
+              return (
+                <div
+                  key={index}
+                  style={{
+                    position: 'absolute',
+                    left: `${x}px`,
+                    top: `${y}px`,
+                    width: `${w}px`,
+                    height: `${h}px`,
+                    backgroundColor: getPieceColor(piece.shape),
+                    transform: `rotate(${piece.orientacion || 0}deg)`,
+                    transformOrigin: '50% 50%',
+                    clipPath: getPieceShape(piece.shape),
+                    pointerEvents: 'none'
+                  }}
                 />
-              </div>
-              <button
-                onClick={handleSubmitRating}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-              >
-                Enviar Calificación
-              </button>
-            </>
-          )}
+              );
+            })}
+          </div>
+        </div>
+        
+        <div className="w-1/4 p-4 flex flex-col">
+          <div className="bg-green-200 rounded-lg p-4 mb-4">
+            <h3 className="font-bold">{solution.nombre} {solution.apellido}</h3>
+            <p className="text-gray-600">{new Date(solution.created_at).toLocaleString()}</p>
+            <p>{solution.description}</p>
+            <p className="text-sm text-gray-600">
+              Calificación promedio: {formatRating(solution.average_rating)} ({solution.total_ratings || 0} calificaciones)
+            </p>
+          </div>
         </div>
       </div>
     </div>
