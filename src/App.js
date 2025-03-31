@@ -15,11 +15,12 @@ import LevelVideoPage from './Components/Levels/LevelVideoPage';
 window.process = process;
 
 function App() {
+  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   useEffect(() => {
     const fetchUserAndSetPlaying = async () => {
       try {
-        const responseUser = await fetch("http://localhost:3001/api/me", {
+        const responseUser = await fetch(`${VITE_API_URL}/api/me`, {
           credentials: "include",
         });
   
@@ -29,7 +30,7 @@ function App() {
         }
   
         const user = await responseUser.json();
-        await fetch("http://localhost:3001/api/update-status", {
+        await fetch(`${VITE_API_URL}/api/update-status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
