@@ -9,7 +9,7 @@ const SolutionsList = ({ levelId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 5;
 
-    const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+    const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
     const fetchUser = async () => {
         try {

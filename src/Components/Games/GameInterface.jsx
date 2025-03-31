@@ -36,7 +36,7 @@ function GameInterface() {
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
 
-  const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)
 

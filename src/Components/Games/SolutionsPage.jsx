@@ -59,7 +59,7 @@ const SolutionsPage = ({
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   useEffect(() => {
     const loadUser = async () => {

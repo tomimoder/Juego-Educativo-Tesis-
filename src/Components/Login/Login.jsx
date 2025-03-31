@@ -53,7 +53,7 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   useEffect(() => {
     fetchSchools();
