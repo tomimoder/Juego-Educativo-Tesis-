@@ -9,9 +9,11 @@ const SolutionsList = ({ levelId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 5;
 
+    const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+
     const fetchUser = async () => {
         try {
-          const response = await fetch("http://localhost:3001/api/me", {
+          const response = await fetch(`${VITE_API_URL}/api/me`, {
             method: "GET",
             credentials: "include", // 🔥 Asegurar que la cookie se envíe
           });
@@ -40,7 +42,7 @@ const SolutionsList = ({ levelId }) => {
             console.log(`📤 Enviando petición a /api/solutions/${levelId} con userId=${user.id}`);
     
             const response = await fetch(
-                `http://localhost:3001/api/solutions/${levelId}?page=${page}&limit=${itemsPerPage}&userId=${user.id}`,
+                `${VITE_API_URL}/api/solutions/${levelId}?page=${page}&limit=${itemsPerPage}&userId=${user.id}`,
                 {
                     method: "GET",
                     credentials: "include",

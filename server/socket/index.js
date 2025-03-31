@@ -10,7 +10,7 @@ const shuffle = require('lodash.shuffle');
 function initializeSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:3000", // 🔥 Asegurar que coincide con el frontend
+    origin: 'https://magisters.pages.dev', //https://magisters.pages.dev
       methods: ["GET", "POST"],
       credentials: true
     }

@@ -9,6 +9,7 @@ import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
 
 
+
 function GameInterface() {
   const [socket, setSocket] = useState(null)
   const [isInstructionsVisible, setIsInstructionsVisible] = useState(true)
@@ -34,6 +35,8 @@ function GameInterface() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
+
+  const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)
 
@@ -88,7 +91,7 @@ function GameInterface() {
   useEffect(() => {
     const fetchLevelData = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/api/levels/${levelId}`)
+        const response = await axios.get(`${VITE_API_URL}/api/levels/${levelId}`)
         console.log(levelData.level);
         if (response.data) {
           setLevelData(response.data)
@@ -107,7 +110,7 @@ function GameInterface() {
   }, [levelId])
 
   const initializeSocket = useCallback(() => {
-    const newSocket = io("http://localhost:3001", {
+    const newSocket = io(`${VITE_API_URL}`, {
       autoConnect: false,
       transports: ["websocket"],
     })
@@ -164,7 +167,7 @@ function GameInterface() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch("http://localhost:3001/api/me", {
+        const response = await fetch(`${VITE_API_URL}/api/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -213,7 +216,7 @@ function GameInterface() {
     } else {
       const fetchLevelData = async () => {
         try {
-          const response = await fetch(`http://localhost:3001/api/levels/${levelId}`)
+          const response = await fetch(`${VITE_API_URL}/api/levels/${levelId}`)
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`)
           }
@@ -231,7 +234,7 @@ function GameInterface() {
 
   const fetchUser = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/me", {
+      const response = await fetch(`${VITE_API_URL}/api/me`, {
         method: "GET",
         credentials: "include", // 🔥 Asegurar que la cookie se envíe con la petición
       });
@@ -271,7 +274,7 @@ function GameInterface() {
         initialPosition: piece.initialPosition,
       }));
   
-      const response = await fetch("http://localhost:3001/api/user-solution", {
+      const response = await fetch(`${VITE_API_URL}/api/user-solution`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // 🔥 Asegurar que la cookie de sesión se envíe
@@ -321,7 +324,7 @@ function GameInterface() {
       console.log("✅ Usuario obtenido desde cookie:", user);
   
       // 🔥 Hacer la petición al backend
-      const response = await fetch(`http://localhost:3001/api/solutions/${levelId}?userId=${user.id}`, {
+      const response = await fetch(`${VITE_API_URL}/api/solutions/${levelId}?userId=${user.id}`, {
         method: "GET",
         credentials: "include", // 🔥 Asegurar que la cookie se envíe
       });

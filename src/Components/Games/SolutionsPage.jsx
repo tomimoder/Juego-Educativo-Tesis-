@@ -59,6 +59,8 @@ const SolutionsPage = ({
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
+  const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+
   useEffect(() => {
     const loadUser = async () => {
       const user = await fetchUser();
@@ -75,7 +77,7 @@ const SolutionsPage = ({
     if (!currentUser || !solutionId) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/check-rating/${solutionId}/${currentUser.id}`, {
+      const response = await fetch(`${VITE_API_URL}/api/check-rating/${solutionId}/${currentUser.id}`, {
         method: "GET",
         credentials: "include",
       });
@@ -95,7 +97,7 @@ const SolutionsPage = ({
 
   const onRatingUpdated = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/solutions/${levelId}?userId=${currentUser.id}`, {
+      const response = await fetch(`${VITE_API_URL}/api/solutions/${levelId}?userId=${currentUser.id}`, {
         method: "GET",
         credentials: "include",
       });
@@ -124,7 +126,7 @@ const SolutionsPage = ({
           return;
         }
     
-        const response = await fetch(`http://localhost:3001/api/assigned-solutions/${levelId}/${user.id}`, {
+        const response = await fetch(`${VITE_API_URL}/api/assigned-solutions/${levelId}/${user.id}`, {
           method: "GET",
           credentials: "include",
         });
@@ -172,7 +174,7 @@ const SolutionsPage = ({
     }
 
     try {
-      const response = await fetch("http://localhost:3001/api/rate-solution", {
+      const response = await fetch(`${VITE_API_URL}/api/rate-solution`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

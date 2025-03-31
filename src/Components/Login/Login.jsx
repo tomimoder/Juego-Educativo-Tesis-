@@ -53,6 +53,8 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
+  const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+
   useEffect(() => {
     fetchSchools();
   }, []);
@@ -69,7 +71,7 @@ export default function Login({ onLogin }) {
   const fetchSchools = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get('http://localhost:3001/api/schools');
+      const response = await axios.get(`${VITE_API_URL}/api/schools`);
       setSchools(response.data);
     } catch (err) {
       console.error('Error fetching schools:', err);
@@ -82,7 +84,7 @@ export default function Login({ onLogin }) {
   const fetchStudents = async (schoolId) => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/schools/${schoolId}/students`);
+      const response = await axios.get(`${VITE_API_URL}/api/schools/${schoolId}/students`);
       setStudents(response.data);
     } catch (err) {
       console.error('Error fetching students:', err);
@@ -102,7 +104,7 @@ export default function Login({ onLogin }) {
     }
   
     try {
-      const response = await fetch("http://localhost:3001/api/login", {
+      const response = await fetch(`${VITE_API_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

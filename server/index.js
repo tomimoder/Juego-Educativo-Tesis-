@@ -14,7 +14,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(cors({
-  origin: 'http://localhost:3000', //https://magisters.pages.dev
+  origin: 'https://magisters.pages.dev', //https://magisters.pages.dev
   credentials: true,
 }));
 

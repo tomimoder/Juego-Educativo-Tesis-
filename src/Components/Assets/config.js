@@ -1,1 +1,1 @@
-export const API_URL = "http://localhost:3001/api";
+export const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
