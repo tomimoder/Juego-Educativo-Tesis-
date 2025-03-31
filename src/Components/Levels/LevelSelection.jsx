@@ -36,6 +36,8 @@ export default function LevelSelection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState(null);
 
   useEffect(() => {
     const fetchLevels = async () => {
@@ -74,51 +76,53 @@ export default function LevelSelection() {
     fetchLevels();
   }, []);
 
+
   const handleLevelSelect = async (levelId) => {
     try {
       const userResponse = await fetch("http://localhost:3001/api/me", {
         method: "GET",
         credentials: "include",
       });
-
+  
       if (!userResponse.ok) {
         throw new Error("Usuario no autenticado");
       }
-
+  
       const user = await userResponse.json();
-
       if (!user || !user.id) {
         throw new Error("Error: Datos de usuario inválidos en la sesión.");
       }
-
-      console.log("✅ Usuario obtenido desde la sesión:", user);
-
-      const response = await fetch("http://localhost:3001/api/levels/unlock", {
+  
+      const unlockResponse = await fetch("http://localhost:3001/api/levels/unlock", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ userId: user.id, currentLevelId: levelId }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  
+      if (!unlockResponse.ok) {
+        throw new Error(`HTTP error! status: ${unlockResponse.status}`);
       }
-
-      console.log(`🎮 Nivel ${levelId} desbloqueado con éxito`);
-
+  
       const selectedLevel = levels.find((level) => level.level === levelId);
-
       if (!selectedLevel) {
-        throw new Error("Error: Nivel seleccionado no encontrado.");
+        throw new Error("Nivel seleccionado no encontrado.");
       }
-
-      navigate(`/game/${levelId}`, { state: selectedLevel });
+  
+      // Muestra el modal de video solo después de verificar todo lo anterior
+      setSelectedLevel(selectedLevel);
+      setShowVideoModal(true);
+  
     } catch (err) {
-      console.error("❌ Error desbloqueando nivel:", err);
+      console.error("Error desbloqueando nivel:", err);
       setError("No se pudo iniciar el nivel. Intenta nuevamente.");
     }
+  };
+  
+
+  const handleVideoEnded = () => {
+    setShowVideoModal(false);
+    navigate(`/game/${selectedLevel.level}`, { state: selectedLevel });
   };
 
   if (loading) {
@@ -146,7 +150,7 @@ export default function LevelSelection() {
   return (
     <div className="min-h-screen bg-yellow-200 flex items-center justify-center">
       <div className="bg-yellow-300 p-8 rounded-3xl shadow-lg">
-        <h1 className="text-4xl font-bold text-purple-800 text-center mb-8">LEVEL SELECTION</h1>
+        <h1 className="text-4xl font-bold text-purple-800 text-center mb-8">Selecciona un nivel</h1>
         <div className="grid grid-cols-5 gap-4">
           {levels.map((level) => (
             <LevelButton
@@ -159,6 +163,20 @@ export default function LevelSelection() {
             />
           ))}
         </div>
+
+        {showVideoModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-4 rounded-lg shadow-lg">
+              <video
+                width="100%"
+                controls
+                autoPlay
+                onEnded={handleVideoEnded}
+                src={`/videos/video${selectedLevel.level}.mp4`}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Botón para ver los Ratings en otra página */}
         <div className="flex items-center justify-center mt-6">

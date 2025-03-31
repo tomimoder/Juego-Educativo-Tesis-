@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './index.css';
 import Login from './Components/Login/Login';
@@ -10,11 +10,42 @@ import process from 'process';
 import Test from './Components/Tangram/test';
 import RatingsPage from './Components/Ratings/RatingsPage';
 import SolutionsPage from './Components/Games/SolutionsPage'; 
+import LevelVideoPage from './Components/Levels/LevelVideoPage';
 
 window.process = process;
 
-
 function App() {
+
+  useEffect(() => {
+    const fetchUserAndSetPlaying = async () => {
+      try {
+        const responseUser = await fetch("http://localhost:3001/api/me", {
+          credentials: "include",
+        });
+  
+        if (!responseUser.ok) {
+          console.error("Error obteniendo usuario.");
+          return;
+        }
+  
+        const user = await responseUser.json();
+        await fetch("http://localhost:3001/api/update-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ userId: user.id, status: 'playing' }),
+        });
+  
+        console.log('✅ Usuario establecido en playing:', user.id);
+      } catch (err) {
+        console.error("Error al actualizar el estado del usuario:", err);
+      }
+    };
+  
+    fetchUserAndSetPlaying();
+  
+  }, []);
+
   return (
     <Router>
       <Routes>
@@ -26,7 +57,7 @@ function App() {
         <Route path="/test" element={<Test />} />
         <Route path="/ratings" element={<RatingsPage />} />
         <Route path="/solutions/:levelId" element={<SolutionsPage />} />
-
+        <Route path="/level-video/:levelId" element={<LevelVideoPage />} />
       </Routes>
     </Router>
   );

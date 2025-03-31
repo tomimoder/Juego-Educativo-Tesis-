@@ -24,12 +24,6 @@ const fetchUser = async () => {
   }
 };
 
-// Esta función ajustará las coordenadas visualmente
-const normalizeCoordinates = (x, y) => {
-  const offsetX = 400; // ajusta estos valores para centrar
-  const offsetY = 350;
-  return { x: x + offsetX, y: y + offsetY };
-};
 
 // Añade esto para obtener atributos claramente definidos
 const getPieceAttributesFull = (shape, id) => {
@@ -45,7 +39,7 @@ const getPieceAttributesFull = (shape, id) => {
     case 'diamond':
       return { svgPath: "M 0 35 L 35 0 L 70 35 L 35 70 Z", fillColor: "#FF0000", width: 70, height: 70, centerPoint: "35,35"};
     case 'parallelogram':
-      return { svgPath: "M 0 25 H 60 L 90 50 L 30 50 Z", fillColor: "#0000FF", width: 90, height: 50, centerPoint: "45,37.5"};
+      return { svgPath: "M 90 25 H 25 L 0 50 L 65 50 Z", fillColor: "#0000FF", width: 90, height: 50, centerPoint: "45,37.5"};
     default:
       return { svgPath: "", fillColor: "gray", width: 50, height: 50, centerPoint: "25,25"};
   }
@@ -129,19 +123,18 @@ const SolutionsPage = ({
           setIsLoading(false);
           return;
         }
-
-        const response = await fetch(`http://localhost:3001/api/solutions/${levelId}?userId=${user.id}`, {
+    
+        const response = await fetch(`http://localhost:3001/api/assigned-solutions/${levelId}/${user.id}`, {
           method: "GET",
           credentials: "include",
         });
-
+    
         if (!response.ok) {
           setSolutions([]);
           return;
         }
-
+    
         const data = await response.json();
-        console.log("📌 Respuesta del backend:", data);
         setSolutions(data.solutions.length > 0 ? data.solutions : []);
       } catch (error) {
         setSolutions([]);
@@ -149,6 +142,7 @@ const SolutionsPage = ({
         setIsLoading(false);
       }
     };
+    
 
     if (levelId) {
       fetchLatestSolutions();
@@ -272,39 +266,61 @@ const SolutionsPage = ({
           {selectedSolution ? (
             <>
               <p className="text-lg font-bold mb-4">{selectedSolution.nombre} Solución</p>
-              {selectedSolution.solution_data.map((piece, index) => {
-                if (!piece.coordenadas?.[0]) return null;
+              {(() => {
+                const rawPieces = selectedSolution.solution_data;
 
-                // Obteniendo atributos exactos igual que TangramPiece
-                const { svgPath, fillColor, width, height, centerPoint } = getPieceAttributesFull(piece.shape, index);
-                const [centerX, centerY] = centerPoint.split(',').map(Number);
-                
-                // Normalización específica ajustada para centrar mejor las piezas
-                const offsetX = 450;
-                const offsetY = 350;
-
-                let posX = piece.coordenadas[0].x + offsetX;
-                let posY = piece.coordenadas[0].y + offsetY;
-
-                return (
-                  <svg
-                    key={index}
-                    width="120"
-                    height="120"
-                    viewBox="-10 -10 100 100"
-                    style={{
-                      position: "absolute",
-                      left: `${posX}px`,
-                      top: `${posY}px`,
-                      overflow: 'visible',
-                    }}
-                  >
-                    <g transform={`rotate(${piece.orientacion || 0} ${centerX} ${centerY})`}>
-                      <path d={svgPath} fill={fillColor} stroke="black" strokeWidth="2" />
-                    </g>
-                  </svg>
+                // 🔹 Filtrar piezas válidas
+                const validPieces = rawPieces.filter(
+                  (p) => p && p.shape && Array.isArray(p.coordenadas) && p.coordenadas[0]
                 );
-              })}
+
+                // 🔹 Calcular bounding box
+                const coords = validPieces.map(p => p.coordenadas[0]);
+                const minX = Math.min(...coords.map(c => c.x));
+                const maxX = Math.max(...coords.map(c => c.x));
+                const minY = Math.min(...coords.map(c => c.y));
+                const maxY = Math.max(...coords.map(c => c.y));
+
+                const boundingWidth = maxX - minX;
+                const boundingHeight = maxY - minY;
+
+                const containerWidth = 1400;
+                const containerHeight = 550;
+
+                const offsetX = containerWidth / 2 - (minX + boundingWidth / 2);
+                const offsetY = containerHeight / 2 - (minY + boundingHeight / 2);
+
+                // 🔹 Renderizar piezas válidas
+                return validPieces.map((piece, index) => {
+                  console.log("📌 Pieza:", piece.shape, piece.coordenadas[0]);
+
+                  const { svgPath, fillColor, width, height, centerPoint } = getPieceAttributesFull(piece.shape, index);
+                  const [centerX, centerY] = centerPoint.split(',').map(Number);
+
+                  const posX = piece.coordenadas[0].x + offsetX;
+                  const posY = piece.coordenadas[0].y + offsetY;
+
+                  return (
+                    <svg
+                      key={index}
+                      width="120"
+                      height="120"
+                      viewBox="-10 -10 100 100"
+                      style={{
+                        position: "absolute",
+                        left: `${posX}px`,
+                        top: `${posY}px`,
+                        overflow: 'visible',
+                      }}
+                    >
+                      <g transform={`rotate(${piece.orientacion || 0} ${centerX} ${centerY})`}>
+                        <path d={svgPath} fill={fillColor} stroke="black" strokeWidth="2" />
+                      </g>
+                    </svg>
+                  );
+                });
+              })()}
+
             </>
           ) : (
             <p className="text-center text-gray-500">Selecciona una solución para visualizar</p>

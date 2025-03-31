@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TangramPiece from './TangramPiece';
 
-const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], rotation }) => {
+const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], rotation, piezasPermitidas = [], }) => {
     const initialPieces = [
         { id: 1, shape: 'large-triangle', initialPosition: { x: 88, y: 56 }, rotation: 0 },
         { id: 2, shape: 'large-triangle', initialPosition: { x: 262, y: 56 }, rotation: 0 },
@@ -156,21 +156,28 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
             position: 'relative',
             minHeight: '163px'  
         }}>
-            <div style={{
+            <div className="solution-area" style={{
                 width: '100%',
                 height: 'calc(100% - 30px)',
                 position: 'relative'
             }}>
                 {pieces.map(piece => (
-                    <TangramPiece
-                        key={piece.id}
-                        id={piece.id}
-                        shape={piece.shape}
-                        initialPosition={piece.position || piece.initialPosition}
-                        rotation={piece.rotation}
-                        onDragStop={handleDragStop}
-                    />
-                ))}
+            <TangramPiece
+                key={piece.id}
+                id={piece.id}
+                shape={piece.shape}
+                initialPosition={piece.position || piece.initialPosition}
+                rotation={piece.rotation}
+                onDragStop={handleDragStop}
+                bloqueada={piezasBloqueadas.some(p => p.id === piece.id)}
+                draggable={nivelActual !== 2 || piezasPermitidas.includes(piece.id)}
+                assignedToMe={nivelActual === 2 && piezasPermitidas.includes(piece.id)}
+                playerName={nivelActual === 2 ? (piezasPermitidas.includes(piece.id) ? 'Tú' : 'Compañero') : ''}
+                nivelActual={nivelActual}
+                boardRef={boardRef} // 🔥 Envía claramente el ref al TangramPiece
+            />
+        ))}
+
             </div>
 
             <div style={{ 

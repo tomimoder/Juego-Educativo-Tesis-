@@ -4,6 +4,8 @@ const cookie = require("cookie");
 
 let waitingUser = null;
 const groupSolutions = {};
+const groups = {}; // información de los grupos conectados
+const shuffle = require('lodash.shuffle'); 
 
 function initializeSocket(server) {
   const io = new Server(server, {
@@ -45,71 +47,142 @@ function initializeSocket(server) {
       try {
         connection = await pool.getConnection();
     
-        // Buscar si el usuario ya está en un grupo de chat
         const [existingGroup] = await connection.query(
           `SELECT chat_group_id FROM UserChatGroups WHERE user_id = ?`, [user.id]
         );
     
+        // Usuario ya tiene grupo
         if (existingGroup.length > 0) {
-          // Si el usuario ya tiene un grupo, se une a él
           const chatGroupId = existingGroup[0].chat_group_id;
           socket.join(`chatGroup_${chatGroupId}`);
-          console.log(`✅ Usuario ${user.id} ya está en el grupo ${chatGroupId}`);
           socket.emit("chatGroupJoined", { chatGroupId });
+    
+          if (!groups[chatGroupId]) {
+            groups[chatGroupId] = {
+              players: [],
+              piecesAssigned: false,
+              assignments: {}
+            };
+          }
+    
+          let player = groups[chatGroupId].players.find(p => p.userId === user.id);
+          if (!player) {
+            player = { socketId: socket.id, userId: user.id };
+            groups[chatGroupId].players.push(player);
+          } else {
+            player.socketId = socket.id;
+          }
+    
+          if (!groups[chatGroupId].piecesAssigned && groups[chatGroupId].players.length === 2) {
+            const piecesIds = shuffle([1, 2, 3, 4, 5, 6, 7]);
+            const assignmentPlayer1 = piecesIds.slice(0, 4);
+            const assignmentPlayer2 = piecesIds.slice(4);
+    
+            groups[chatGroupId].assignments[groups[chatGroupId].players[0].socketId] = assignmentPlayer1;
+            groups[chatGroupId].assignments[groups[chatGroupId].players[1].socketId] = assignmentPlayer2;
+    
+            groups[chatGroupId].piecesAssigned = true;
+    
+            io.to(groups[chatGroupId].players[0].socketId).emit("piecesAssignment", { pieces: assignmentPlayer1 });
+            io.to(groups[chatGroupId].players[1].socketId).emit("piecesAssignment", { pieces: assignmentPlayer2 });
+    
+            console.log(`📤 Piezas asignadas (grupo existente): Usuario ${groups[chatGroupId].players[0].userId} => ${assignmentPlayer1}, Usuario ${groups[chatGroupId].players[1].userId} => ${assignmentPlayer2}`);
+          } else if (groups[chatGroupId].assignments[socket.id]) {
+            const pieces = groups[chatGroupId].assignments[socket.id];
+            socket.emit("piecesAssignment", { pieces });
+            console.log(`📤 Piezas reasignadas a usuario ${user.id}:`, pieces);
+          } else {
+            console.log(`⌛ Esperando al segundo jugador para reasignar piezas (usuario ${user.id})`);
+          }
+    
           return;
         }
     
-        // Si no está en ningún grupo, intentamos emparejarlo
+        // Obtener nivel_curso del usuario actual
+        const [userResult] = await connection.query(
+          `SELECT nivel_curso FROM users WHERE id = ?`, [user.id]
+        );
+    
+        const userNivelCurso = userResult[0]?.nivel_curso;
+    
+        if (!userNivelCurso) {
+          socket.emit("error", { message: "Tu usuario no tiene nivel asignado." });
+          return;
+        }
+    
         if (waitingUser === null) {
-          waitingUser = { socket, userId: user.id };
-          socket.emit("waiting", { message: "Esperando a otro usuario para emparejar..." });
-          console.log(`⌛ Usuario ${user.id} esperando pareja`);
+          // Ahora guardamos también el nivel del usuario que espera
+          waitingUser = { socket, userId: user.id, nivel_curso: userNivelCurso };
+          socket.emit("waiting", { message: `Esperando a otro usuario de ${userNivelCurso} para emparejar...` });
+          console.log(`⌛ Usuario ${user.id} esperando pareja del nivel ${userNivelCurso}`);
         } else {
-          // Hay un usuario esperando, creamos un grupo para ambos
+          // Verificar que el usuario actual y waitingUser tengan el mismo nivel_curso
+          if (waitingUser.nivel_curso !== userNivelCurso) {
+            socket.emit("waiting", { message: `Esperando a otro usuario de ${userNivelCurso} para emparejar...` });
+            console.log(`🚫 Usuario ${user.id} (${userNivelCurso}) no coincide con nivel ${waitingUser.nivel_curso} del usuario en espera`);
+            return;
+          }
+    
           const socket1 = waitingUser.socket;
           const socket2 = socket;
           const userId1 = waitingUser.userId;
           const userId2 = user.id;
-          waitingUser = null; // Reiniciar variable de espera
+          waitingUser = null;
     
-          // Crear nuevo grupo en la base de datos
           const [result] = await connection.query("SELECT MAX(id) as maxId FROM ChatGroups");
           const chatGroupId = (result[0].maxId || 0) + 1;
-    
+          
+          if (userId1 === userId2) {
+            socket.emit("error", { message: "No puedes emparejar contigo mismo. Usa una cuenta distinta." });
+            return;
+          }
+
           await connection.beginTransaction();
-          await connection.query(
-            "INSERT INTO ChatGroups (id, name) VALUES (?, ?)",
-            [chatGroupId, `Chat Group ${chatGroupId}`]
-          );
-    
+          await connection.query("INSERT INTO ChatGroups (id, name) VALUES (?, ?)", [chatGroupId, `Chat Group ${chatGroupId}`]);
           await connection.query(
             "INSERT INTO UserChatGroups (chat_group_id, user_id) VALUES (?, ?), (?, ?)",
             [chatGroupId, userId1, chatGroupId, userId2]
           );
-    
           await connection.commit();
     
-          // Unir a los usuarios al grupo en Socket.IO
           socket1.join(`chatGroup_${chatGroupId}`);
           socket2.join(`chatGroup_${chatGroupId}`);
     
-          console.log(`✅ Emparejados en grupo ${chatGroupId} - Usuarios ${userId1} y ${userId2}`);
           socket1.emit("chatGroupJoined", { chatGroupId });
           socket2.emit("chatGroupJoined", { chatGroupId });
+    
+          const piecesIds = shuffle([1, 2, 3, 4, 5, 6, 7]);
+          const assignmentPlayer1 = piecesIds.slice(0, 4);
+          const assignmentPlayer2 = piecesIds.slice(4);
+    
+          groups[chatGroupId] = {
+            players: [
+              { socketId: socket1.id, userId: userId1 },
+              { socketId: socket2.id, userId: userId2 },
+            ],
+            piecesAssigned: true,
+            assignments: {
+              [socket1.id]: assignmentPlayer1,
+              [socket2.id]: assignmentPlayer2,
+            }
+          };
+    
+          io.to(socket1.id).emit("piecesAssignment", { pieces: assignmentPlayer1 });
+          io.to(socket2.id).emit("piecesAssignment", { pieces: assignmentPlayer2 });
+    
+          console.log(`📤 Piezas asignadas: Usuario ${userId1} => ${assignmentPlayer1}, Usuario ${userId2} => ${assignmentPlayer2}`);
         }
+    
       } catch (error) {
         if (connection) await connection.rollback();
-        console.error("❌ Error al unir al usuario al grupo de chat:", error);
         socket.emit("error", { message: "Error al unirse al grupo de chat. Intenta de nuevo." });
-        
-        // Si hay un error, aseguramos que `waitingUser` no quede en un estado inconsistente
-        if (waitingUser && waitingUser.userId === user.id) {
-          waitingUser = null;
-        }
+        console.error("Error:", error);
+        if (waitingUser && waitingUser.userId === user.id) waitingUser = null;
       } finally {
         if (connection) connection.release();
       }
     });
+    
 
     // 🔹 Evento para retransmitir piezas movidas en el Tangram
     socket.on("pieceMoved", ({ groupId, pieceId, position, rotation }) => {
@@ -154,34 +227,53 @@ function initializeSocket(server) {
     });
 
     // 🔹 Evento para obtener una solución aleatoria
-    socket.on("requestRandomSolution", async ({ groupId }) => {
+    socket.on("requestRandomSolution", async ({ groupId, levelId }) => {
       try {
-        // Si ya existe una solución para este grupo, la reutilizamos
         if (groupSolutions[groupId]) {
           console.log(`📡 Reenviando solución existente para grupo ${groupId}`);
           io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", groupSolutions[groupId]);
           return;
         }
     
-        // Obtener una solución aleatoria de la base de datos
         const connection = await pool.getConnection();
-        const [solution] = await connection.query(
-          "SELECT solution_data FROM usertangramsolutions ORDER BY RAND() LIMIT 1"
+    
+        const [solutions] = await connection.query(
+          `
+          SELECT uts.solution_data
+          FROM usertangramsolutions uts
+          INNER JOIN (
+            SELECT user_id, level_id, MAX(average_rating) AS max_rating
+            FROM usertangramsolutions
+            WHERE level_id < ?
+            GROUP BY user_id, level_id
+          ) best ON uts.user_id = best.user_id 
+                 AND uts.level_id = best.level_id
+                 AND uts.average_rating = best.max_rating
+          ORDER BY uts.average_rating DESC, uts.total_ratings DESC
+          LIMIT 5
+          `,
+          [levelId]
         );
+    
         connection.release();
     
-        if (solution.length > 0) {
-          // Guardar la solución para este grupo
-          groupSolutions[groupId] = solution[0].solution_data;
-          console.log(`📡 Asignando nueva solución al grupo ${groupId}:`, solution[0].solution_data);
+        if (solutions.length > 0) {
+          const randomIndex = Math.floor(Math.random() * solutions.length);
+          const selectedSolution = solutions[randomIndex].solution_data;
     
-          // Enviar la misma solución a todos los jugadores del grupo
-          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", solution[0].solution_data);
+          groupSolutions[groupId] = selectedSolution;
+    
+          console.log(`📡 Asignando nueva solución destacada al grupo ${groupId}:`, selectedSolution);
+          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", selectedSolution);
+        } else {
+          console.warn("⚠️ No se encontraron soluciones destacadas disponibles");
+          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", []);
         }
       } catch (error) {
-        console.error("❌ Error obteniendo solución aleatoria:", error);
+        console.error("❌ Error obteniendo solución destacada:", error);
       }
     });
+    
   });
 
   return io;

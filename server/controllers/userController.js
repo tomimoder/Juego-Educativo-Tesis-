@@ -1,5 +1,7 @@
 const pool = require('../database');
 const cookieParser = require("cookie-parser");
+const scheduledStatusChanges = new Map();
+
 
 
 
@@ -97,16 +99,36 @@ const getSolutionsByLevel = async (req, res) => {
 
 const updateUserStatus = async (req, res) => {
   const { userId, status } = req.body;
+
+  if (!userId || !status || !['waiting', 'playing', 'idle'].includes(status)) {
+    return res.status(400).json({ message: 'Datos inválidos o incompletos' });
+  }
+
   try {
-    await pool.query(
-      'UPDATE Users SET status = ? WHERE id = ?',
-      [status, userId]
-    );
-    res.json({ message: 'User status updated successfully' });
+    await pool.query('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
+    console.log(`✅ Estado actualizado: Usuario ${userId} → ${status}`);
+
+    if (status === 'playing') {
+      if (scheduledStatusChanges.has(userId)) {
+        clearTimeout(scheduledStatusChanges.get(userId));
+      }
+
+      const timer = setTimeout(async () => {
+        await pool.query('UPDATE users SET status = ? WHERE id = ?', ['idle', userId]);
+        console.log(`🔔 Usuario ${userId} cambiado automáticamente a 'idle' tras 72 horas.`);
+        scheduledStatusChanges.delete(userId);
+      }, 72 * 60 * 60 * 1000);
+
+      scheduledStatusChanges.set(userId, timer);
+    }
+
+    res.json({ message: 'Estado actualizado correctamente' });
   } catch (error) {
-    console.error('Error updating user status:', error);
-    res.status(500).json({ error: 'Failed to update user status', details: error.message });
+    console.error("Error actualizando estado:", error);
+    res.status(500).json({ message: 'Error actualizando estado' });
   }
 };
+
+
 
 module.exports = { login, getSolutionsByLevel, updateUserStatus, getCurrentUser };

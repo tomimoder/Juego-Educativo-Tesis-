@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Draggable from 'react-draggable';
 
-const TangramPiece = ({ shape, initialPosition, id, onDragStop, rotation = 0, bloqueada  }) => {
+const TangramPiece = ({ shape, initialPosition, id, onDragStop, rotation = 0, bloqueada,  draggable = true, assignedToMe = false, playerName = '', nivelActual, boardRef      }) => {
     let svgPath;
     let fillColor;
     let centerPoint;
@@ -45,7 +45,7 @@ const TangramPiece = ({ shape, initialPosition, id, onDragStop, rotation = 0, bl
 
         // Paralelogramo (azul)
         case 'parallelogram':
-            svgPath = "M 0 25 H 60 L 90 50 L 30 50 Z";
+            svgPath = "M 90 25 H 25 L 0 50 L 65 50 Z";
             fillColor = "#0000FF"; // Azul
             centerPoint = "45,37.5";
             break;
@@ -69,56 +69,53 @@ const TangramPiece = ({ shape, initialPosition, id, onDragStop, rotation = 0, bl
 
 
     return (
-        <Draggable
-            bounds="parent"
-            position={initialPosition}
-            onStop={(e, data) => {
-                if (!dragEnabled) return;
-                onDragStop(id, { x: data.x, y: data.y });
-            }}
-            disabled={!dragEnabled || bloqueada} // Agrega esta condición
-        >
-            <svg 
-                width="120"
-                height="120"
-                viewBox="-10 -10 100 100"
-                style={{ 
-                    position: 'absolute',
-                    overflow: 'visible',
-                    left: '-20px',
-                    top: '-20px',
-                }}
-                pointerEvents="none" // Permite solo eventos en áreas definidas
+      <Draggable
+        bounds={boardRef}
+        position={initialPosition}
+        onStop={(e, data) => {
+          if (!dragEnabled || !draggable) return;
+          onDragStop(id, { x: data.x, y: data.y });
+        }}
+        disabled={!dragEnabled || bloqueada || !draggable}
+      >
+        <div style={{ position: 'absolute', pointerEvents: 'none' }}>
+          <svg width="120" height="120" viewBox="-10 -10 100 100" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+            <g transform={`rotate(${rotation} ${centerX} ${centerY})`}>
+              <path d={svgPath} fill={fillColor} />
+              <circle
+                cx={centerX}
+                cy={centerY}
+                r="15"
+                fill="rgba(0,0,0,0)"
+                onMouseDown={handleCircleMouseDown}
+                onMouseUp={handleCircleMouseUp}
+                style={{ cursor: draggable ? 'pointer' : 'not-allowed', pointerEvents: 'all' }}
+              />
+              <circle cx={centerX} cy={centerY} r="5" fill="black" style={{ pointerEvents: 'none' }} />
+            </g>
+          </svg>
+  
+          {nivelActual === 2 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '-15px', // claramente arriba de la pieza
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: assignedToMe ? 'blue' : 'red',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap'
+              }}
             >
-                <g transform={`rotate(${rotation} ${centerX} ${centerY})`}>
-                    <path d={svgPath} fill={fillColor} />
-                    {/* Área de clic extendida */}
-                    <circle
-                        cx={centerX}
-                        cy={centerY}
-                        r="15" // Radio mayor para facilitar clic
-                        fill="rgba(0, 0, 0, 0)" // Invisible pero clickeable
-                        onMouseDown={handleCircleMouseDown}
-                        onMouseUp={handleCircleMouseUp}
-                        style={{
-                            cursor: 'pointer',
-                            pointerEvents: 'all', // Activa eventos solo en el círculo
-                        }}
-                    />
-                    {/* Círculo visible */}
-                    <circle
-                        cx={centerX}
-                        cy={centerY}
-                        r="5" // Tamaño del círculo visible
-                        fill="black"
-                        style={{
-                            pointerEvents: 'none', // No captura eventos, solo visible
-                        }}
-                    />
-                </g>
-            </svg>
-        </Draggable>
+              {assignedToMe ? 'Tú' : playerName}
+            </div>
+          )}
+        </div>
+      </Draggable>
     );
+      
 };
 
 export default TangramPiece;

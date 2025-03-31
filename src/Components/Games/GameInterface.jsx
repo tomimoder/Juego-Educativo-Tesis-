@@ -33,6 +33,7 @@ function GameInterface() {
   const [hasSavedSolution, setHasSavedSolution] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
   const [latestSolutions, setLatestSolutions] = useState([]);
+  const [assignedPieces, setAssignedPieces] = useState([]);
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)
 
@@ -70,6 +71,8 @@ function GameInterface() {
   useEffect(scrollToBottom, [messages])
 
   const [isFiguraSeleccionada, setIsFiguraSeleccionada] = useState(false)
+
+
 
   useEffect(() => {
     if (levelData?.level === 3 && !isFiguraSeleccionada) {
@@ -117,6 +120,11 @@ function GameInterface() {
       }
     })
 
+    newSocket.on("piecesAssignment", ({ pieces }) => {
+      setAssignedPieces(pieces);
+      console.log("Piezas asignadas a ti:", pieces);
+    });
+
     newSocket.on("connect_error", (err) => {
       console.error("Socket connection error:", err.message)
       setError(`Connection error: ${err.message}`)
@@ -150,6 +158,8 @@ function GameInterface() {
 
     return newSocket
   }, [currentUser])
+
+  
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -353,10 +363,11 @@ function GameInterface() {
 
   useEffect(() => {
     if (levelData?.level === 4 && socket && chatGroupId) {
-        console.log(`📤 Solicitando solución aleatoria para el grupo ${chatGroupId}`);
-        socket.emit("requestRandomSolution", { groupId: chatGroupId });
+      console.log(`📤 Solicitando solución destacada para el grupo ${chatGroupId}, nivel: ${levelId}`);
+      socket.emit("requestRandomSolution", { groupId: chatGroupId, levelId });
     }
-  }, [levelData, socket, chatGroupId]);
+  }, [levelData, socket, chatGroupId, levelId]);
+  
 
   useEffect(() => {
     if (socket) {
@@ -497,13 +508,14 @@ useEffect(() => {
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
             {isPiecesViable && (
               <TangramBoard
-                updateSolution={updateUserSolution}
-                onPieceMoved={handlePieceMoved}
-                socket={socket}
-                piezasBloqueadas={figuraActual?.piezas || []}
-                nivelActual={levelData?.level}
-                solucionInicial={levelData?.level === 4 ? userSolution : []}
-              />
+              updateSolution={updateUserSolution}
+              onPieceMoved={handlePieceMoved}
+              socket={socket}
+              piezasBloqueadas={figuraActual?.piezas || []}
+              nivelActual={levelData?.level}
+              solucionInicial={levelData?.level === 4 ? userSolution : []}
+              piezasPermitidas={assignedPieces}
+            />            
             )}
           </div>
         </div>
