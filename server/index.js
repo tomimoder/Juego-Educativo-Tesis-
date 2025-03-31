@@ -15,7 +15,8 @@ const server = http.createServer(app);
 
 app.use(cors({
   origin: ['https://magisters.pages.dev', 
-    'https://4a34-152-230-102-21.ngrok-free.app'],//https://magisters.pages.dev
+  " https://3143-152-230-102-21.ngrok-free.app"
+  ],//https://magisters.pages.dev
   credentials: true,
 }));
 
