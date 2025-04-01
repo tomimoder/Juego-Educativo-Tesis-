@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
-import VITE_API_URL from './Components/Assets';
-
+import VITE_API_URL from '../Assets/config'
 
 // Componente de formulario de consentimiento
 const ConsentForm = ({ onAccept, onReject }) => {

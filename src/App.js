@@ -11,7 +11,7 @@ import Test from './Components/Tangram/test';
 import RatingsPage from './Components/Ratings/RatingsPage';
 import SolutionsPage from './Components/Games/SolutionsPage'; 
 import LevelVideoPage from './Components/Levels/LevelVideoPage';
-import VITE_API_URL from './Components/Assets';
+import VITE_API_URL from '../Assets/config'
 
 window.process = process;
 
