@@ -11,11 +11,12 @@ import Test from './Components/Tangram/test';
 import RatingsPage from './Components/Ratings/RatingsPage';
 import SolutionsPage from './Components/Games/SolutionsPage'; 
 import LevelVideoPage from './Components/Levels/LevelVideoPage';
-import VITE_API_URL from '../../config'
 
 window.process = process;
 
 function App() {
+
+  const VITE_API_URL= "http://192.168.7.126:3001";
 
   useEffect(() => {
     const fetchUserAndSetPlaying = async () => {
