@@ -148,8 +148,8 @@ export default function Login({ onLogin }) {
     // Guardar en cookies el usuario y posiblemente el estado de consentimiento
     Cookies.set("userSession", JSON.stringify(currentUser), { 
       expires: 1, 
-      sameSite: "None",
-      secure: true, // Cambia a `true` en producción con HTTPS
+      sameSite: "Lax",
+      secure: false, // Cambia a `true` en producción con HTTPS
     });
     
     // También puedes guardar el estado del consentimiento
