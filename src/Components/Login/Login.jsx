@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import VITE_API_URL from './Components/Assets';
+
 
 // Componente de formulario de consentimiento
 const ConsentForm = ({ onAccept, onReject }) => {
@@ -53,8 +55,6 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
-
   useEffect(() => {
     fetchSchools();
   }, []);
@@ -72,6 +72,7 @@ export default function Login({ onLogin }) {
     try {
       setIsLoading(true);
       const response = await axios.get(`${VITE_API_URL}/api/schools`);
+      console.log(response);
       setSchools(response.data);
     } catch (err) {
       console.error('Error fetching schools:', err);
@@ -85,6 +86,7 @@ export default function Login({ onLogin }) {
     try {
       setIsLoading(true);
       const response = await axios.get(`${VITE_API_URL}/api/schools/${schoolId}/students`);
+      console.log(response);
       setStudents(response.data);
     } catch (err) {
       console.error('Error fetching students:', err);

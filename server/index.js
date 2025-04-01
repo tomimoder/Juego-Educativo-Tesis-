@@ -14,11 +14,13 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(cors({
-  origin: ['https://magisters.pages.dev', 
-  " https://3143-152-230-102-21.ngrok-free.app"
-  ],//https://magisters.pages.dev
+  origin: [
+    'https://magisters.pages.dev',
+    'http://localhost:3000'
+  ],
   credentials: true,
 }));
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -68,6 +70,6 @@ app.get("/api/logout", (req, res) => {
 
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0',() => {
   console.log(`Server running on port ${PORT}`);
 });

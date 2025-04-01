@@ -11,11 +11,11 @@ import Test from './Components/Tangram/test';
 import RatingsPage from './Components/Ratings/RatingsPage';
 import SolutionsPage from './Components/Games/SolutionsPage'; 
 import LevelVideoPage from './Components/Levels/LevelVideoPage';
+import VITE_API_URL from './Components/Assets';
 
 window.process = process;
 
 function App() {
-  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   useEffect(() => {
     const fetchUserAndSetPlaying = async () => {

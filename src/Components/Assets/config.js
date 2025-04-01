@@ -1,1 +1,3 @@
-export const VITE_API_URL= "https://4a34-152-230-102-21.ngrok-free.app";
+const BACKEND_URL= "http://192.168.7.126:3001";
+
+export default BACKEND_URL;
