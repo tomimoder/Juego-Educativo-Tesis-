@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import VITE_API_URL from "../../config";
 
 export default function RatingsPage() {
   const [ratings, setRatings] = useState([]); // Estado para almacenar los ratings
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  
+  const VITE_API_URL = "http://192.168.7.31:3001"
+
 
   useEffect(() => {
     const fetchRatings = async () => {

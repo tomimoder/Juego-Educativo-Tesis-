@@ -7,8 +7,6 @@ import axios from "axios"
 import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
 import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
-import VITE_API_URL from "../../config";
-
 
 
 function GameInterface() {
@@ -36,6 +34,9 @@ function GameInterface() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
+
+  const VITE_API_URL = "http://192.168.7.31:3001"
+
 
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)

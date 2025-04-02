@@ -28,7 +28,7 @@ const saveUserSolution = async (req, res) => {
         }
 
         const [result] = await pool.query(
-            'INSERT INTO UserTangramSolutions (user_id, level_id, solution_data, description) VALUES (?, ?, ?, ?)',
+            'INSERT INTO usertangramsolutions (user_id, level_id, solution_data, description) VALUES (?, ?, ?, ?)',
             [userId, levelId, JSON.stringify(solutionData), description]
         );
 
@@ -60,17 +60,17 @@ const getLatestSolutions = async (req, res) => {
         const [solutions] = await pool.query(
             `SELECT DISTINCT
                 ut.*,
-                Users.nombre,
-                Users.apellido
-            FROM UserTangramSolutions ut
+                users.nombre,
+                users.apellido
+            FROM usertangramsolutions ut
             INNER JOIN (
                 SELECT user_id, MAX(created_at) as max_date
-                FROM UserTangramSolutions
+                FROM usertangramsolutions
                 WHERE level_id = ?
                 GROUP BY user_id
             ) latest ON ut.user_id = latest.user_id 
                      AND ut.created_at = latest.max_date
-            JOIN Users ON ut.user_id = Users.id
+            JOIN users ON ut.user_id = users.id
             WHERE ut.level_id = ?
                 AND ut.user_id != ?
             ORDER BY ut.created_at DESC`,
@@ -95,7 +95,7 @@ const rateSolution = async (req, res) => {
         await pool.query('START TRANSACTION');
 
         await pool.query(
-            `INSERT INTO SolutionRatings (solution_id, user_id, rating, comment)
+            `INSERT INTO solutionratings (solution_id, user_id, rating, comment)
              VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE rating = ?, comment = ?`,
             [solutionId, userId, rating, comment, rating, comment]
@@ -103,13 +103,13 @@ const rateSolution = async (req, res) => {
 
         const [ratings] = await pool.query(
             `SELECT AVG(rating) as avg_rating, COUNT(*) as total
-             FROM SolutionRatings
+             FROM solutionratings
              WHERE solution_id = ?`,
             [solutionId]
         );
 
         await pool.query(
-            `UPDATE UserTangramSolutions 
+            `UPDATE usertangramsolutions 
              SET average_rating = ?, total_ratings = ?
              WHERE id = ?`,
             [ratings[0].avg_rating, ratings[0].total, solutionId]
@@ -134,7 +134,7 @@ const checkUserRating = async (req, res) => {
     
     try {
         const [rating] = await pool.query(
-            'SELECT * FROM SolutionRatings WHERE solution_id = ? AND user_id = ?',
+            'SELECT * FROM solutionratings WHERE solution_id = ? AND user_id = ?',
             [solutionId, userId]
         );
         
@@ -156,10 +156,10 @@ const getAverageRatings = async (req, res) => {
           COALESCE(u.apellido, '') AS apellido,
           ROUND(AVG(uts.average_rating), 2) AS average_rating,
           SUM(uts.total_ratings) AS total_ratings
-        FROM UserTangramSolutions uts
+        FROM usertangramsolutions uts
         INNER JOIN (
             SELECT user_id, level_id, MAX(created_at) AS latest
-            FROM UserTangramSolutions
+            FROM usertangramsolutions
             GROUP BY user_id, level_id
         ) latest_per_level
         ON uts.user_id = latest_per_level.user_id 
@@ -187,7 +187,7 @@ const getAverageRatings = async (req, res) => {
 const getRandomSolutionFromAll = async (req, res) => {
     try {
         const [solutions] = await pool.query(
-            `SELECT solution_data FROM UserTangramSolutions`
+            `SELECT solution_data FROM usertangramsolutions`
         );
 
         if (solutions.length === 0) {
@@ -213,10 +213,10 @@ const getBestSolutions = async (req, res) => {
         const [solutions] = await pool.query(
             `
             SELECT uts.*, u.nombre, u.apellido
-            FROM UserTangramSolutions uts
+            FROM usertangramsolutions uts
             INNER JOIN (
                 SELECT user_id, level_id, MAX(average_rating) AS max_rating
-                FROM UserTangramSolutions
+                FROM usertangramsolutions
                 WHERE level_id = ?
                 GROUP BY user_id, level_id
             ) best ON uts.user_id = best.user_id 
@@ -245,7 +245,7 @@ const getAssignmentsForSolution = async (req, res) => {
     try {
         const [assignments] = await pool.query(
             `SELECT sa.*, u.nombre, u.apellido 
-             FROM SolutionAssignments sa 
+             FROM solutionassignments sa 
              JOIN users u ON sa.user_id = u.id 
              WHERE sa.solution_id = ?`,
             [solutionId]
@@ -285,7 +285,7 @@ const assignUsersToSolution = async (solutionId, authorUserId, numAssignments = 
         const assignments = selectedUsers.map(user => [solutionId, user.id]);
 
         await pool.query(
-            'INSERT INTO SolutionAssignments (solution_id, user_id) VALUES ?',
+            'INSERT INTO solutionassignments (solution_id, user_id) VALUES ?',
             [assignments]
         );
 
@@ -308,11 +308,11 @@ const getAssignedSolutions = async (req, res) => {
         const [solutions] = await pool.query(
             `
             SELECT uts.*, u.nombre, u.apellido
-            FROM UserTangramSolutions uts
+            FROM usertangramsolutions uts
             INNER JOIN (
                 SELECT uts.user_id, MAX(uts.created_at) AS latest_date
-                FROM UserTangramSolutions uts
-                INNER JOIN SolutionAssignments sa ON sa.solution_id = uts.id
+                FROM usertangramsolutions uts
+                INNER JOIN solutionassignments sa ON sa.solution_id = uts.id
                 WHERE sa.user_id = ? AND uts.level_id = ?
                 GROUP BY uts.user_id
             ) AS latest_solutions

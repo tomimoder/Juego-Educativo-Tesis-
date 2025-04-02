@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
-import VITE_API_URL from "../../config";
 
 const LevelVideoPage = () => {
   const { levelId } = useParams();
   const navigate = useNavigate();
   const [videoEnded, setVideoEnded] = useState(false);
   const [levelData, setLevelData] = useState(null);
-  
+  const VITE_API_URL = "http://192.168.7.31:3001"
+
 
   const handleVideoEnd = () => {
     setVideoEnded(true);

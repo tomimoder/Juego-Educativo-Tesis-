@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie"; 
 import SolutionView from "./SolutionView";
-import VITE_API_URL from "../../config";
 
 const SolutionsList = ({ levelId }) => {
     const [currentPage, setCurrentPage] = useState(1);
@@ -9,6 +8,8 @@ const SolutionsList = ({ levelId }) => {
     const [latestSolutions, setLatestSolutions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 5;
+    const VITE_API_URL = "http://192.168.7.31:3001"
+
 
 
     const fetchUser = async () => {

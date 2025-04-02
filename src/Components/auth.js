@@ -1,13 +1,14 @@
 const React = require('react');
 const { createContext, useState, useContext, useEffect } = React;
 const axios = require('axios');
-import VITE_API_URL from "../../config";
 
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const VITE_API_URL = "http://192.168.7.31:3001"
+
 
   useEffect(() => {
     const token = localStorage.getItem('token');

@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
-
 // Componente de formulario de consentimiento
 const ConsentForm = ({ onAccept, onReject }) => {
   return (
@@ -54,7 +53,8 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  const VITE_API_URL= "http://192.168.7.31:3001";
+  const VITE_API_URL = "http://192.168.7.31:3001"
+
 
   useEffect(() => {
     fetchSchools();

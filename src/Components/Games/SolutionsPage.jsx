@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import VITE_API_URL from "../../config";
 
 const formatRating = (rating) => {
   const numRating = parseFloat(rating);
@@ -8,6 +7,8 @@ const formatRating = (rating) => {
 };
 
 const fetchUser = async () => {
+  const VITE_API_URL = "http://192.168.7.31:3001"
+
   try {
     const response = await fetch(`${VITE_API_URL}/api/me`, {
       method: "GET",
@@ -59,6 +60,7 @@ const SolutionsPage = ({
   const [comment, setComment] = useState('');
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const VITE_API_URL = "http://192.168.7.31:3001"
 
 
   useEffect(() => {

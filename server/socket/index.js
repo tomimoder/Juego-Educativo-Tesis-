@@ -52,7 +52,7 @@ function initializeSocket(server) {
         connection = await pool.getConnection();
     
         const [existingGroup] = await connection.query(
-          `SELECT chat_group_id FROM UserChatGroups WHERE user_id = ?`, [user.id]
+          `SELECT chat_group_id FROM userchatgroups WHERE user_id = ?`, [user.id]
         );
     
         // Usuario ya tiene grupo
@@ -144,7 +144,7 @@ function initializeSocket(server) {
           await connection.beginTransaction();
           await connection.query("INSERT INTO ChatGroups (id, name) VALUES (?, ?)", [chatGroupId, `Chat Group ${chatGroupId}`]);
           await connection.query(
-            "INSERT INTO UserChatGroups (chat_group_id, user_id) VALUES (?, ?), (?, ?)",
+            "INSERT INTO userchatgroups (chat_group_id, user_id) VALUES (?, ?), (?, ?)",
             [chatGroupId, userId1, chatGroupId, userId2]
           );
           await connection.commit();

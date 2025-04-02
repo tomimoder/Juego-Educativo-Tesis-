@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { Button } from "../ui/button"; // Importamos el botón reutilizable
-import VITE_API_URL from "../../config";
 
 const LevelButton = ({ level, name, unlocked, stars, onClick }) => {
   return (
@@ -39,6 +38,7 @@ export default function LevelSelection() {
   const navigate = useNavigate();
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
+  const VITE_API_URL = "http://192.168.7.31:3001"
 
 
   useEffect(() => {
