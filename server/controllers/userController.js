@@ -16,7 +16,7 @@ const login = async (req, res) => {
 
   try {
     const [users] = await pool.query(
-      "SELECT * FROM Users WHERE nombre = ? AND apellido = ? AND school_id = ?",
+      "SELECT * FROM users WHERE nombre = ? AND apellido = ? AND school_id = ?",
       [nombre, apellido, schoolId]
     );
 

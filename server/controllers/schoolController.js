@@ -2,7 +2,7 @@ const pool = require('../database');
 
 const getSchools = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM Schools');
+    const [rows] = await pool.query('SELECT * FROM schools');
     res.json(rows);
   } catch (error) {
     console.error('Error fetching schools:', error);
@@ -13,7 +13,7 @@ const getSchools = async (req, res) => {
 const getStudents = async (req, res) => {
   try {
     const [students] = await pool.query(
-      'SELECT * FROM Users WHERE school_id = ?',
+      'SELECT * FROM users WHERE school_id = ?',
       [req.params.schoolId]
     );
     res.json(students);
