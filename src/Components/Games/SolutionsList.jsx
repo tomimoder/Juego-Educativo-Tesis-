@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Cookies from "js-cookie"; 
 import SolutionView from "./SolutionView";
+import VITE_API_URL from "../../config";
 
 const SolutionsList = ({ levelId }) => {
     const [currentPage, setCurrentPage] = useState(1);
@@ -9,7 +10,6 @@ const SolutionsList = ({ levelId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 5;
 
-    const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
     const fetchUser = async () => {
         try {

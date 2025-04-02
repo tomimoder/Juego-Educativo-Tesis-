@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
+import VITE_API_URL from "../../config";
 
 const LevelVideoPage = () => {
   const { levelId } = useParams();
   const navigate = useNavigate();
   const [videoEnded, setVideoEnded] = useState(false);
   const [levelData, setLevelData] = useState(null);
+  
 
   const handleVideoEnd = () => {
     setVideoEnded(true);
@@ -15,7 +17,7 @@ const LevelVideoPage = () => {
   useEffect(() => {
     const fetchLevelData = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/levels/${levelId}`, {
+        const response = await fetch(`${VITE_API_URL}/api/levels/${levelId}`, {
           method: "GET",
           credentials: "include",
         });

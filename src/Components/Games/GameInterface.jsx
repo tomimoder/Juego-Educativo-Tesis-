@@ -7,6 +7,7 @@ import axios from "axios"
 import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
 import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
+import VITE_API_URL from "../../config";
 
 
 
@@ -36,7 +37,6 @@ function GameInterface() {
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
 
-  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)
 

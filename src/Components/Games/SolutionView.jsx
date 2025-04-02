@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import VITE_API_URL from "../../config";
 
 const formatRating = (rating) => {
   const numRating = parseFloat(rating);
@@ -7,7 +8,7 @@ const formatRating = (rating) => {
 
 const fetchUser = async () => {
   try {
-    const response = await fetch("http://localhost:3001/api/me", {
+    const response = await fetch(`${VITE_API_URL}/api/me`, {
       method: "GET",
       credentials: "include",
     });

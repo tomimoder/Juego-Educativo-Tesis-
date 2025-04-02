@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import VITE_API_URL from "../../config";
 
 export default function GlobalScoresDialog({ open, onClose }) {
   const [ratings, setRatings] = useState([]); // Estado para almacenar average_rating
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  
 
   useEffect(() => {
     if (open) {
@@ -12,7 +15,7 @@ export default function GlobalScoresDialog({ open, onClose }) {
         try {
           setLoading(true);
           setError(null);
-          const response = await fetch("http://localhost:3001/api/solutions/average-ratings", {
+          const response = await fetch(`${VITE_API_URL}/api/solutions/average-ratings`, {
             credentials: "include",
           });
 

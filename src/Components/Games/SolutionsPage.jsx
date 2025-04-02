@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import VITE_API_URL from "../../config";
 
 const formatRating = (rating) => {
   const numRating = parseFloat(rating);
@@ -8,7 +9,7 @@ const formatRating = (rating) => {
 
 const fetchUser = async () => {
   try {
-    const response = await fetch("http://localhost:3001/api/me", {
+    const response = await fetch(`${VITE_API_URL}/api/me`, {
       method: "GET",
       credentials: "include",
     });
@@ -59,7 +60,6 @@ const SolutionsPage = ({
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  const VITE_API_URL= " https://3143-152-230-102-21.ngrok-free.app";
 
   useEffect(() => {
     const loadUser = async () => {

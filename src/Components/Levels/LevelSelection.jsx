@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import { Button } from "../ui/button"; // Importamos el botón reutilizable
+import VITE_API_URL from "../../config";
 
 const LevelButton = ({ level, name, unlocked, stars, onClick }) => {
   return (
@@ -39,11 +40,12 @@ export default function LevelSelection() {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
 
+
   useEffect(() => {
     const fetchLevels = async () => {
       try {
         setLoading(true);
-        const userResponse = await fetch("http://localhost:3001/api/me", {
+        const userResponse = await fetch(`${VITE_API_URL}/api/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -53,7 +55,7 @@ export default function LevelSelection() {
         const user = await userResponse.json();
         console.log("✅ Usuario obtenido desde sesión:", user);
 
-        const response = await fetch(`http://localhost:3001/api/levels/progress/${user.id}`, {
+        const response = await fetch(`${VITE_API_URL}/api/levels/progress/${user.id}`, {
           method: "GET",
           credentials: "include",
         });
@@ -79,7 +81,7 @@ export default function LevelSelection() {
 
   const handleLevelSelect = async (levelId) => {
     try {
-      const userResponse = await fetch("http://localhost:3001/api/me", {
+      const userResponse = await fetch(`${VITE_API_URL}/api/me`, {
         method: "GET",
         credentials: "include",
       });
@@ -93,7 +95,7 @@ export default function LevelSelection() {
         throw new Error("Error: Datos de usuario inválidos en la sesión.");
       }
   
-      const unlockResponse = await fetch("http://localhost:3001/api/levels/unlock", {
+      const unlockResponse = await fetch(`${VITE_API_URL}/api/levels/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

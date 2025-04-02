@@ -1,6 +1,8 @@
 const React = require('react');
 const { createContext, useState, useContext, useEffect } = React;
 const axios = require('axios');
+import VITE_API_URL from "../../config";
+
 
 const AuthContext = createContext(null);
 
@@ -13,7 +15,7 @@ export const AuthProvider = ({ children }) => {
       // Hacer una llamada a la API para obtener los datos completos del usuario usando el token
       const fetchUserData = async () => {
         try {
-          const response = await axios.get('http://localhost:3001/api/users/me', { // Ajusta la URL si es necesario
+          const response = await axios.get(`${VITE_API_URL}/api/users/me`, { // Ajusta la URL si es necesario
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.data && response.data.id) {

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import VITE_API_URL from "../../config";
 
 export default function RatingsPage() {
   const [ratings, setRatings] = useState([]); // Estado para almacenar los ratings
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  
 
   useEffect(() => {
     const fetchRatings = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch("http://localhost:3001/api/average-ratings", {
+        const response = await fetch(`${VITE_API_URL}/api/average-ratings`, {
           credentials: "include",
         });
 
