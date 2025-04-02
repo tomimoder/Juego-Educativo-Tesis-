@@ -54,7 +54,7 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  const VITE_API_URL= "http://192.168.7.126:3001";
+  const VITE_API_URL= "http://192.168.7.31:3001";
 
   useEffect(() => {
     fetchSchools();

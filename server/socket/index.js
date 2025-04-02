@@ -10,12 +10,16 @@ const shuffle = require('lodash.shuffle');
 function initializeSocket(server) {
   const io = new Server(server, {
     cors: {
-    origin: 'https://magisters.pages.dev', //https://magisters.pages.dev
+      origin: [
+        'http://localhost:3000',
+        'http://192.168.7.31:3000',
+        'https://magisters.pages.dev'
+      ],
       methods: ["GET", "POST"],
       credentials: true
     }
   });
-
+  
   io.on("connection", (socket) => {
     console.log(`🛜 Nueva conexión - Socket ID: ${socket.id}`);
 

@@ -16,7 +16,7 @@ window.process = process;
 
 function App() {
 
-  const VITE_API_URL= "http://192.168.7.126:3001";
+  const VITE_API_URL= "http://192.168.7.31:3001";
 
   useEffect(() => {
     const fetchUserAndSetPlaying = async () => {
