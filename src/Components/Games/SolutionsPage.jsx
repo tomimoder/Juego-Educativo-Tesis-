@@ -7,7 +7,7 @@ const formatRating = (rating) => {
 };
 
 const fetchUser = async () => {
-  const VITE_API_URL = "http://192.168.7.31:3001"
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
   try {
     const response = await fetch(`${VITE_API_URL}/api/me`, {
@@ -60,7 +60,7 @@ const SolutionsPage = ({
   const [comment, setComment] = useState('');
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const VITE_API_URL = "http://192.168.7.31:3001"
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
 
   useEffect(() => {
@@ -139,6 +139,7 @@ const SolutionsPage = ({
         }
     
         const data = await response.json();
+        console.log("📌 Soluciones obtenidas:", data);
         setSolutions(data.solutions.length > 0 ? data.solutions : []);
       } catch (error) {
         setSolutions([]);
@@ -230,7 +231,6 @@ const SolutionsPage = ({
                     onClick={() => setSelectedSolution(solution)}
                     className="w-full text-left p-2 mb-2 bg-gray-200 hover:bg-gray-300 rounded"
                   >
-                    {solution.nombre} -{" "}
                     {new Date(solution.created_at).toLocaleString()}
                   </button>
                 ))
@@ -269,7 +269,7 @@ const SolutionsPage = ({
         >
           {selectedSolution ? (
             <>
-              <p className="text-lg font-bold mb-4">{selectedSolution.nombre} Solución</p>
+              <p className="text-lg font-bold mb-4"> Solución</p>
               {(() => {
                 const rawPieces = selectedSolution.solution_data;
 

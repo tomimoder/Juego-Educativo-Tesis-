@@ -5,7 +5,7 @@ export default function GlobalScoresDialog({ open, onClose }) {
   const [ratings, setRatings] = useState([]); // Estado para almacenar average_rating
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const VITE_API_URL = "http://192.168.7.31:3001"
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
   
 

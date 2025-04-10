@@ -95,7 +95,7 @@ const TangramPiece = ({ shape, initialPosition, id, onDragStop, rotation = 0, bl
             </g>
           </svg>
   
-          {nivelActual === 2 && (
+          {nivelActual === 2 || nivelActual === 4 ? (
             <div
               style={{
                 position: 'absolute',
@@ -111,7 +111,7 @@ const TangramPiece = ({ shape, initialPosition, id, onDragStop, rotation = 0, bl
             >
               {assignedToMe ? 'Tú' : playerName}
             </div>
-          )}
+          ) : null}
         </div>
       </Draggable>
     );

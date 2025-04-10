@@ -35,7 +35,7 @@ function GameInterface() {
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
 
-  const VITE_API_URL = "http://192.168.7.31:3001"
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
 
 
@@ -44,6 +44,13 @@ function GameInterface() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
+
+  useEffect(() => {
+    if (messagesEndRef.current){
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+
+    }
+  }, [messages])
 
   const FIGURAS_NIVEL3 = {
     gato: {
@@ -375,17 +382,21 @@ function GameInterface() {
 
   useEffect(() => {
     if (socket) {
-        socket.on("randomSolutionAssigned", (solutionData) => {
-            console.log("📥 Solución aleatoria recibida:", solutionData);
-            setUserSolution(solutionData);
-            setIsFiguraSeleccionada(true);  
+      socket.on("randomSolutionAssigned", (solutionData) => {
+        console.log("📥 Solución aleatoria recibida:", solutionData);
+        setUserSolution({
+          ...solutionData,
+          description: solutionData.description || "No hay descripción disponible", // Asegúrate de que la descripción exista
         });
-
-        return () => {
-            socket.off("randomSolutionAssigned");
-        };
+        setIsFiguraSeleccionada(true);  
+      });
+  
+      return () => {
+        socket.off("randomSolutionAssigned");
+      };
     }
-}, [socket]);
+  }, [socket]);
+  
 
 
   const handleSendMessage = (e) => {
@@ -512,14 +523,14 @@ useEffect(() => {
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
             {isPiecesViable && (
               <TangramBoard
-              updateSolution={updateUserSolution}
-              onPieceMoved={handlePieceMoved}
-              socket={socket}
-              piezasBloqueadas={figuraActual?.piezas || []}
-              nivelActual={levelData?.level}
-              solucionInicial={levelData?.level === 4 ? userSolution : []}
-              piezasPermitidas={assignedPieces}
-            />            
+                updateSolution={updateUserSolution}
+                onPieceMoved={handlePieceMoved}
+                socket={socket}
+                piezasBloqueadas={figuraActual?.piezas || []}
+                nivelActual={levelData?.level}
+                solucionInicial={levelData?.level === 4 ? userSolution : []}
+                piezasPermitidas={assignedPieces}
+              />
             )}
           </div>
         </div>
@@ -529,6 +540,12 @@ useEffect(() => {
             <h2 className="font-bold mb-2">Instrucciones</h2>
             <p>{levelData.instructions}</p>
           </div>
+  
+          <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
+            <h2 className="font-bold mb-2">Descripción</h2>
+            <p>{userSolution.description}</p>
+          </div>
+  
           <div className="flex justify-between mb-4">
             <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg">
               {isInstructionsVisible ? 'Ocultar Instrucciones' : 'Mostrar Instrucciones'}
@@ -556,95 +573,89 @@ useEffect(() => {
           </div>
   
           {(levelData.level === 2 || levelData.level === 4) && (
-  <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
-    <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
-      {error ? (
-        <div className="text-center text-red-600">{error}</div>
-      ) : waitingForPartner ? (
-        <div className="text-center text-gray-600">Esperando a otro jugador...</div>
-      ) : (
-        <>
-          <div className="messages flex-grow overflow-y-auto mb-4">
-            {messages.map((msg, index) => {
-              const isCurrentUser = currentUser && msg.userId === currentUser.id;
-              return (
-                <div
-                  key={index}
-                  className={`message p-2 mb-2 rounded ${
-                    isCurrentUser ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
-                  }`}
-                  style={{ maxWidth: '80%' }}
-                >
-                  <div className="text-xs text-gray-600 mb-1">
-                    {isCurrentUser ? 'Tú' : `${msg.nombre} ${msg.apellido}`}
-                  </div>
-                  <div>{msg.content}</div>
-                </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-          <form onSubmit={handleSendMessage} className="relative">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Escribe un mensaje..."
-              className="w-full p-3 pr-12 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="transform rotate-90"
-              >
-                <path
-                  d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </form>
-        </>
-      )}
-    </div>
-  </div>
-)}
+            <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
+              <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
+                {error ? (
+                  <div className="text-center text-red-600">{error}</div>
+                ) : waitingForPartner ? (
+                  <div className="text-center text-gray-600">Esperando a otro jugador...</div>
+                ) : (
+                  <>
+                   <div className="messages overflow-y-auto mb-4" style={{ maxHeight: '300px', minHeight: '300px' }}>
+                      {messages.map((msg, index) => {
+                        const isCurrentUser = currentUser && msg.userId === currentUser.id;
+                        return (
+                          <div
+                            key={index}
+                            className={`message p-2 mb-2 rounded ${isCurrentUser ? 'bg-blue-100 ml-auto' : 'bg-gray-100'}`}
+                            style={{ maxWidth: '80%' }}
+                          >
+                            <div className="text-xs text-gray-600 mb-1">
+                              {isCurrentUser ? 'Tú' : `${msg.nombre} ${msg.apellido}`}
+                            </div>
+                            <div>{msg.content}</div>
+                          </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                    <form onSubmit={handleSendMessage} className="relative">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Escribe un mensaje..."
+                        className="w-full p-3 pr-12 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        type="submit"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700"
+                      >
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="transform rotate-90"
+                        >
+                          <path
+                            d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
   
       {showSolutions && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div className="bg-white w-[100vw] h-[100vh] p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
-      <h3 className="text-xl font-bold mb-4">Últimas Soluciones</h3>
-
-      <SolutionsList levelId={levelId} />
-
-      <button
-        onClick={() => navigate('/levels')}
-        className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-      >
-        Cerrar
-      </button>
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white w-[100vw] h-[100vh] p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
+            <h3 className="text-xl font-bold mb-4">Últimas Soluciones</h3>
+            <SolutionsList levelId={levelId} />
+            <button
+              onClick={() => navigate('/levels')}
+              className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
   
       <TimeUpPopup isOpen={isTimeUpPopupOpen} onClose={handleCloseTimeUpPopup} />
     </div>
   );
-  
-
-}
+}  
 
 export default GameInterface
 

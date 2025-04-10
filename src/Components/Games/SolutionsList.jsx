@@ -8,7 +8,7 @@ const SolutionsList = ({ levelId }) => {
     const [latestSolutions, setLatestSolutions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 5;
-    const VITE_API_URL = "http://192.168.7.31:3001"
+    const VITE_API_URL = "http://192.168.7.203:3001"
 
 
 

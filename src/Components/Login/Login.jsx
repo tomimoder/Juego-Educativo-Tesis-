@@ -5,38 +5,71 @@ import Cookies from 'js-cookie';
 
 // Componente de formulario de consentimiento
 const ConsentForm = ({ onAccept, onReject }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full shadow-xl">
+      <div
+        className={`bg-white rounded-lg shadow-xl transition-all duration-300 ease-in-out ${
+          isExpanded ? 'w-full h-full max-w-4xl p-10 overflow-y-auto' : 'max-w-md w-full p-8'
+        }`}
+      >
         <h2 className="text-2xl font-bold mb-4">Términos y Condiciones</h2>
-        
-        <div className="mb-6 max-h-60 overflow-y-auto border border-gray-300 rounded p-4 bg-gray-50">
-          <p className="text-gray-700">
+
+        <div
+          className={`border border-gray-300 rounded p-4 bg-gray-50 mb-4 ${
+            isExpanded ? 'h-[calc(100vh-300px)] overflow-y-auto' : 'max-h-40 overflow-y-auto'
+          }`}
+        >
+          <p className="text-gray-700 whitespace-pre-line">
             Al utilizar nuestra aplicación, aceptas nuestros términos y condiciones. 
             Recopilamos información sobre tu uso para mejorar la experiencia educativa y 
             proporcionar servicios personalizados. Tu información está protegida y solo 
             se utiliza para los fines establecidos en nuestra política de privacidad.
-            
+
             Nos comprometemos a proteger la privacidad de los estudiantes y cumplir con 
             todas las leyes y regulaciones aplicables relacionadas con la protección de datos.
+
+            (Aquí podrías agregar mucho más texto sin problema… 👇)
+
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse 
+            lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras elementum ultrices diam.
+            
+            Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, 
+            orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat...
           </p>
         </div>
-        
-        <div className="flex space-x-4 justify-end">
+
+        <div className="mb-4 text-right">
           <button
-            onClick={onReject}
-            className="bg-red-500 hover:bg-red-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+            onClick={toggleExpand}
+            className="text-blue-600 hover:underline text-sm"
           >
-            Rechazar
-          </button>
-          
-          <button
-            onClick={onAccept}
-            className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
-          >
-            Aceptar
+            {isExpanded ? 'Ver menos' : 'Ver más'}
           </button>
         </div>
+
+        {!isExpanded && (
+          <div className="flex space-x-4 justify-end">
+            <button
+              onClick={onReject}
+              className="bg-red-500 hover:bg-red-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+            >
+              Rechazar
+            </button>
+
+            <button
+              onClick={onAccept}
+              className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+            >
+              Aceptar
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -53,7 +86,7 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  const VITE_API_URL = "http://192.168.7.31:3001"
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
 
   useEffect(() => {

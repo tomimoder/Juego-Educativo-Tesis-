@@ -16,7 +16,7 @@ const server = http.createServer(app);
 app.use(cors({
   origin: [
     'http://localhost:3000',                // Para pruebas locales en tu PC
-    'http://192.168.7.31:3000',            // Para acceso desde otros dispositivos en la red
+    'http://192.168.7.203:3000',            // Para acceso desde otros dispositivos en la red
     'https://magisters.pages.dev'          // (opcional) si en algún momento usas el frontend en la nube
   ],
   credentials: true,

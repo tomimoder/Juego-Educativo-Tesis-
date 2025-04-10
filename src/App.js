@@ -15,7 +15,7 @@ import LevelVideoPage from './Components/Levels/LevelVideoPage';
 window.process = process;
 
 function App() {
-  const VITE_API_URL = "http://192.168.7.31:3001"
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
 
   

@@ -12,7 +12,7 @@ function initializeSocket(server) {
     cors: {
       origin: [
         'http://localhost:3000',
-        'http://192.168.7.31:3000',
+        'http://192.168.7.203:3000',
         'https://magisters.pages.dev'
       ],
       methods: ["GET", "POST"],
@@ -65,7 +65,7 @@ function initializeSocket(server) {
             groups[chatGroupId] = {
               players: [],
               piecesAssigned: false,
-              assignments: {}
+              assignmentsByUser: {}
             };
           }
     
@@ -82,8 +82,8 @@ function initializeSocket(server) {
             const assignmentPlayer1 = piecesIds.slice(0, 4);
             const assignmentPlayer2 = piecesIds.slice(4);
     
-            groups[chatGroupId].assignments[groups[chatGroupId].players[0].socketId] = assignmentPlayer1;
-            groups[chatGroupId].assignments[groups[chatGroupId].players[1].socketId] = assignmentPlayer2;
+            groups[chatGroupId].assignmentsByUser[groups[chatGroupId].players[0].userId] = assignmentPlayer1;
+            groups[chatGroupId].assignmentsByUser[groups[chatGroupId].players[1].userId] = assignmentPlayer2;
     
             groups[chatGroupId].piecesAssigned = true;
     
@@ -91,13 +91,23 @@ function initializeSocket(server) {
             io.to(groups[chatGroupId].players[1].socketId).emit("piecesAssignment", { pieces: assignmentPlayer2 });
     
             console.log(`📤 Piezas asignadas (grupo existente): Usuario ${groups[chatGroupId].players[0].userId} => ${assignmentPlayer1}, Usuario ${groups[chatGroupId].players[1].userId} => ${assignmentPlayer2}`);
-          } else if (groups[chatGroupId].assignments[socket.id]) {
-            const pieces = groups[chatGroupId].assignments[socket.id];
-            socket.emit("piecesAssignment", { pieces });
-            console.log(`📤 Piezas reasignadas a usuario ${user.id}:`, pieces);
-          } else {
-            console.log(`⌛ Esperando al segundo jugador para reasignar piezas (usuario ${user.id})`);
-          }
+          } else  {
+            const player = groups[chatGroupId].players.find(p => p.userId === user.id);
+            if (player){
+              const previousSocketId = player.socketId;
+              const assigned = groups[chatGroupId].assignmentsByUser[user.id];
+
+              if (assigned){
+                socket.emit("piecesAssignment", { pieces: assigned });
+                console.log((`♻️ Piezas reasignadas a ${user.id} tras reconexión:`, assigned));
+              }else{
+                console.log(`⌛ Usuario ${user.id} ya registrado pero sin piezas asignadas todavía`);
+              }
+            }else{
+              console.log(`❌ Usuario ${user.id} no está en memoria en players del grupo ${chatGroupId}`);
+            }
+            
+          } 
     
           return;
         }
@@ -243,7 +253,7 @@ function initializeSocket(server) {
     
         const [solutions] = await connection.query(
           `
-          SELECT uts.solution_data
+          SELECT uts.solution_data, uts.description
           FROM usertangramsolutions uts
           INNER JOIN (
             SELECT user_id, level_id, MAX(average_rating) AS max_rating
@@ -264,19 +274,21 @@ function initializeSocket(server) {
         if (solutions.length > 0) {
           const randomIndex = Math.floor(Math.random() * solutions.length);
           const selectedSolution = solutions[randomIndex].solution_data;
+          const description = solutions[randomIndex].description;
     
-          groupSolutions[groupId] = selectedSolution;
+          groupSolutions[groupId] = { solution: selectedSolution, description };
     
           console.log(`📡 Asignando nueva solución destacada al grupo ${groupId}:`, selectedSolution);
-          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", selectedSolution);
+          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", { solution: selectedSolution, description });
         } else {
           console.warn("⚠️ No se encontraron soluciones destacadas disponibles");
-          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", []);
+          io.to(`chatGroup_${groupId}`).emit("randomSolutionAssigned", { solution: [], description: "" });
         }
       } catch (error) {
         console.error("❌ Error obteniendo solución destacada:", error);
       }
     });
+    
     
   });
 
