@@ -129,6 +129,46 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+  const updateUserLevel = async (req, res) => {
+    const { levelId } = req.body;
+
+    // Obtener el usuario desde la cookie
+    const userSession = req.cookies.userSession;
+    if (!userSession) {
+      return res.status(401).json({ error: "Usuario no autenticado" });
+    }
+
+    let user;
+    try {
+      user = JSON.parse(userSession);
+      if (!user.id) throw new Error("Usuario inválido en la cookie");
+    } catch (error) {
+      console.error("❌ Error leyendo la cookie:", error);
+      return res.status(400).json({ error: "Error en la autenticación del usuario" });
+    }
+
+    if (!levelId) {
+      return res.status(400).json({ error: "Falta el levelId" });
+    }
+
+    try {
+      const [result] = await pool.query(
+        "UPDATE users SET current_level_id = ? WHERE id = ?",
+        [levelId, user.id]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      console.log(`✅ current_level_id actualizado para usuario ${user.id}: ${levelId}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ Error actualizando current_level_id:", error);
+      res.status(500).json({ error: "Error en el servidor" });
+    }
+  };
 
 
-module.exports = { login, getSolutionsByLevel, updateUserStatus, getCurrentUser };
+
+module.exports = { login, getSolutionsByLevel, updateUserStatus, getCurrentUser, updateUserLevel };

@@ -34,6 +34,9 @@ function GameInterface() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
+  const [isReady, setIsReady] = useState(false);
+  
+
 
   const VITE_API_URL = "http://192.168.7.203:3001"
 
@@ -163,38 +166,72 @@ function GameInterface() {
       console.error("Error de socket:", error)
       setError(error.message)
       setWaitingForPartner(false)
-    })
+    })    
 
     newSocket.connect()
 
     return newSocket
   }, [currentUser])
 
+
+  useEffect(() => {
+  if (!socket) return;
+
+  const handleGroupJoined = () => {
+    console.log("Compañero conectado — habilitando chat");
+    setWaitingForPartner(false);
+  };
+
+  socket.on("chatGroupJoined", handleGroupJoined);
+
+  return () => {
+    socket.off("chatGroupJoined", handleGroupJoined);
+  };
+}, [socket]);
+
+  
   
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndUpdateLevel = async () => {
       try {
         const response = await fetch(`${VITE_API_URL}/api/me`, {
           method: "GET",
           credentials: "include",
         });
-    
+
         if (!response.ok) throw new Error("Usuario no autenticado");
-    
+
         const data = await response.json();
         if (!data.id) throw new Error("Usuario inválido en la cookie");
-    
+
         console.log("✅ Usuario obtenido desde el backend:", data);
         setCurrentUser(data);
+
+        // Actualiza el current_level_id del usuario autenticado
+        const updateResponse = await fetch(`${VITE_API_URL}/api/update-user-level`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            levelId: levelId, // Solo enviamos el levelId
+          }),
+        });
+
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json();
+          console.error("❌ Error actualizando current_level_id:", errorData);
+        } else {
+          console.log(`✅ current_level_id actualizado para el usuario autenticado: ${levelId}`);
+        }
       } catch (err) {
-        console.error("❌ Error obteniendo usuario:", err);
+        console.error("❌ Error obteniendo usuario o actualizando nivel:", err);
         navigate("/");
       }
-    };    
+    };
 
-    fetchUser();
-  }, [navigate]);
+    fetchUserAndUpdateLevel();
+  }, [navigate, levelId]);
 
   useEffect(() => {
     if (currentUser) {
@@ -578,10 +615,10 @@ useEffect(() => {
                 {error ? (
                   <div className="text-center text-red-600">{error}</div>
                 ) : waitingForPartner ? (
-                  <div className="text-center text-gray-600">Esperando a otro jugador...</div>
+                  <div className="text-center text-red-600">No puedes enviar mensajes hasta que tu compañero se conecte, cuando puedas mover las piezas por favor recarga la pagina para poder hablar.</div>
                 ) : (
                   <>
-                   <div className="messages overflow-y-auto mb-4" style={{ maxHeight: '300px', minHeight: '300px' }}>
+                    <div className="messages overflow-y-auto mb-4" style={{ maxHeight: '300px', minHeight: '300px' }}>
                       {messages.map((msg, index) => {
                         const isCurrentUser = currentUser && msg.userId === currentUser.id;
                         return (
@@ -599,17 +636,28 @@ useEffect(() => {
                       })}
                       <div ref={messagesEndRef} />
                     </div>
-                    <form onSubmit={handleSendMessage} className="relative">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (waitingForPartner) return; // Bloquea envío si sigue esperando
+                        handleSendMessage(e);
+                      }}
+                      className="relative"
+                    >
                       <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Escribe un mensaje..."
+                        disabled={waitingForPartner}
                         className="w-full p-3 pr-12 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       <button
                         type="submit"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700"
+                        disabled={waitingForPartner}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 ${
+                          waitingForPartner ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'
+                        }`}
                       >
                         <svg
                           width="24"

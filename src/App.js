@@ -11,6 +11,7 @@ import Test from './Components/Tangram/test';
 import RatingsPage from './Components/Ratings/RatingsPage';
 import SolutionsPage from './Components/Games/SolutionsPage'; 
 import LevelVideoPage from './Components/Levels/LevelVideoPage';
+import WaitingUsersLayout from '../src/Components/Admin/page'; 
 
 window.process = process;
 
@@ -61,6 +62,7 @@ function App() {
         <Route path="/test" element={<Test />} />
         <Route path="/ratings" element={<RatingsPage />} />
         <Route path="/solutions/:levelId" element={<SolutionsPage />} />
+        <Route path="/waiting-users" element={<WaitingUsersLayout  />} />
         <Route path="/level-video/:levelId" element={<LevelVideoPage />} />
       </Routes>
     </Router>

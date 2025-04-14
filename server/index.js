@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const levelRoutes = require('./routes/levelRoutes');
 const solutionRoutes = require('./routes/solutionRoutes');
+const WaitingUsersRoutes = require('./routes/NewadminRoutes'); // Importa la nueva ruta de usuarios en espera
 
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +46,7 @@ app.use('/api', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/levels', levelRoutes);
 app.use('/api', solutionRoutes);
+app.use('/api', WaitingUsersRoutes); // Usa la nueva ruta de usuarios en espera
 
 app.get("/api/me", (req, res) => {
   console.log("🍪 Cookies recibidas en backend:", req.cookies);

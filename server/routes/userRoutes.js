@@ -7,6 +7,7 @@ router.post('/login', userController.login);
 router.get('/schools/:schoolId/students', userController.getSolutionsByLevel);
 router.put('/users/status', userController.updateUserStatus);
 router.post('/update-status', userController.updateUserStatus);
+router.post('/update-user-level', userController.updateUserLevel);
 
 
 
