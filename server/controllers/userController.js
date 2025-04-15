@@ -170,5 +170,38 @@ const updateUserStatus = async (req, res) => {
   };
 
 
+const getLevelProgress = async (req, res) =>{
+  const { userId } = req.params;
+
+  if(!userId) {
+    return res.status(400).json({ error: "Falta el userId" });
+  }
+
+  try{
+    const [levels] = await pool.query("SELECT * FROM levels");
+    const [userLevels] = await pool.query(
+      "SELECT * FROM user_levels WHERE user_id = ?",
+      [userId]
+    );
+
+    const progress = levels.map((level) => {
+      const userLevel = userLevels.find((ul) => ul.level_id === level.id);
+      return {
+        level: level.id,
+        name: level.name,
+        unlocked: userLevel ? true : level.id === 1,
+        stars: userLevel ? userLevel.stars : 0,
+        completed: userLevel ? userLevel.completed : 0,
+      };
+    });
+
+    res.json(progress);
+  } catch (error) {
+    console.error("❌ Error obteniendo progreso de niveles:", error);
+    res.status(500).json({ error: "Error en el servidor" });
+  }
+}
+
+
 
 module.exports = { login, getSolutionsByLevel, updateUserStatus, getCurrentUser, updateUserLevel };

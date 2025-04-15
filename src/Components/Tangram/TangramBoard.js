@@ -170,7 +170,12 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
                 rotation={piece.rotation}
                 onDragStop={handleDragStop}
                 bloqueada={piezasBloqueadas.some(p => p.id === piece.id)}
-                draggable={(nivelActual === 2 || nivelActual === 4) && piezasPermitidas.includes(piece.id)} // Hacerlo arrastrable solo para niveles 2 y 4
+                draggable={
+                    (nivelActual === 1 || nivelActual === 3)
+                      ? true
+                      : (nivelActual === 2 || nivelActual === 4) && piezasPermitidas.includes(piece.id)
+                  }
+                  
                 assignedToMe={(nivelActual === 2 || nivelActual === 4) && piezasPermitidas.includes(piece.id)} // Asignar solo para niveles 2 y 4
                 playerName={(nivelActual === 2 || nivelActual === 4) ? (piezasPermitidas.includes(piece.id) ? 'Tú' : 'Compañero') : ''} // Cambiar el nombre de jugador para niveles 2 y 4
                 nivelActual={nivelActual}

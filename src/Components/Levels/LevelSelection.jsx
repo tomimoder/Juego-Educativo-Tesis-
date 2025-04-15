@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import React from "react";
 import { Button } from "../ui/button"; // Importamos el botón reutilizable
 
-const LevelButton = ({ level, name, unlocked, stars, onClick }) => {
+const LevelButton = ({ level, name, unlocked, stars, completed, onClick }) => {
   return (
     <button
       onClick={onClick}
-      className={`w-24 h-24 rounded-lg flex flex-col items-center justify-center ${
+      className={`relative w-24 h-24 rounded-lg flex flex-col items-center justify-center ${
         unlocked ? "bg-purple-300 hover:bg-purple-400" : "bg-gray-400"
       }`}
       disabled={!unlocked}
@@ -27,6 +27,17 @@ const LevelButton = ({ level, name, unlocked, stars, onClick }) => {
           </svg>
         ))}
       </div>
+      {completed && (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="absolute top-1 right-1 h-6 w-6 text-green-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      )}
     </button>
   );
 };
@@ -49,21 +60,21 @@ export default function LevelSelection() {
           method: "GET",
           credentials: "include",
         });
-
+  
         if (!userResponse.ok) throw new Error("Usuario no autenticado");
-
+  
         const user = await userResponse.json();
         console.log("✅ Usuario obtenido desde sesión:", user);
-
+  
         const response = await fetch(`${VITE_API_URL}/api/levels/progress/${user.id}`, {
           method: "GET",
           credentials: "include",
         });
-
+  
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+  
         const data = await response.json();
         console.log("📌 Niveles obtenidos:", data);
         setLevels(data);
@@ -74,9 +85,9 @@ export default function LevelSelection() {
         setLoading(false);
       }
     };
-
+  
     fetchLevels();
-  }, []);
+  }, []); // Nota: No agregamos dependencias adicionales para evitar recargas innecesarias
 
 
   const handleLevelSelect = async (levelId) => {
@@ -161,6 +172,7 @@ export default function LevelSelection() {
               name={level.name}
               unlocked={level.unlocked}
               stars={level.stars}
+              completed={level.completed}
               onClick={() => handleLevelSelect(level.level)}
             />
           ))}

@@ -335,6 +335,7 @@ function GameInterface() {
         alert("¡Solución guardada!");
         setHasSavedSolution(true);
         await fetchLatestSolutions();
+        await markLevelAsCompleted(); // Marcar nivel como completado después de guardar la solución
       } else {
         alert("Error al guardar la solución");
       }
@@ -396,17 +397,19 @@ function GameInterface() {
       const timerId = setInterval(() => {
         setTimeLeft((time) => {
           if (time - 1 <= 0) {
-            clearInterval(timerId)
-            setIsTimeUpPopupOpen(true)
-            handleSaveSolution();
-            return 0
+            clearInterval(timerId);
+            setIsTimeUpPopupOpen(true);
+            handleSaveSolution(); // Guardar solución
+            // Marcar nivel como completado
+            markLevelAsCompleted();
+            return 0;
           }
-          return time - 1
-        })
-      }, 1000)
-      return () => clearInterval(timerId)
+          return time - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timerId);
     }
-  }, [timeLeft])
+  }, [timeLeft]);
 
 
   useEffect(() => {
@@ -433,6 +436,38 @@ function GameInterface() {
       };
     }
   }, [socket]);
+
+
+  const markLevelAsCompleted = async () => {
+    try {
+      const user = await fetchUser();
+      if (!user) {
+        console.error("Usuario no autenticado");
+        alert("Error: Debes iniciar sesión nuevamente.");
+        return;
+      }
+  
+      const response = await fetch(`${VITE_API_URL}/api/levels/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: user.id,
+          levelId: levelId,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error marcando nivel como completado");
+      }
+  
+      console.log(`✅ Nivel ${levelId} marcado como completado y siguiente nivel desbloqueado`);
+    } catch (error) {
+      console.error("❌ Error marcando nivel como completado:", error);
+      alert("Error al completar el nivel. Intenta nuevamente.");
+    }
+  };
   
 
 
@@ -706,4 +741,3 @@ useEffect(() => {
 }  
 
 export default GameInterface
-
