@@ -7,6 +7,7 @@ import axios from "axios"
 import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
 import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
+import SaveSolutionModal from "../Solution/SolutionFormModal"
 
 
 function GameInterface() {
@@ -34,7 +35,9 @@ function GameInterface() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
-  const [isReady, setIsReady] = useState(false);
+  const [isSaveSolutionModalOpen, setIsSaveSolutionModalOpen] = useState(false);
+  const [startTime, setStartTime] = useState(null); // Nuevo estado para tiempo de inicio
+  const [moveCount, setMoveCount] = useState(0);
   
 
 
@@ -233,6 +236,47 @@ function GameInterface() {
     fetchUserAndUpdateLevel();
   }, [navigate, levelId]);
 
+  // Registrar inicio del nivel
+  useEffect(() => {
+    const logLevelStart = async () => {
+      try {
+        if (currentUser && levelId) {
+          await axios.post(
+            `${VITE_API_URL}/api/start-level`,
+            { userId: currentUser.id, levelId },
+            { withCredentials: true }
+          );
+          setStartTime(new Date());
+          console.log('✅ Inicio de nivel registrado');
+        }
+      } catch (error) {
+        console.error('Error registrando inicio de nivel:', error);
+      }
+    };
+
+    logLevelStart();
+  }, [currentUser, levelId]);
+
+  // Obtener conteo de movimientos (opcional, para mostrar en la UI)
+  const fetchMoveCount = async () => {
+    try {
+      const response = await axios.get(`${VITE_API_URL}/api/move-count`, {
+        params: { userId: currentUser.id, levelId },
+        withCredentials: true,
+      });
+      setMoveCount(response.data.moveCount);
+      console.log(`Movimientos: ${response.data.moveCount}`);
+    } catch (error) {
+      console.error('Error obteniendo conteo de movimientos:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser && levelId) {
+      fetchMoveCount();
+    }
+  }, [currentUser, levelId, userSolution]);
+
   useEffect(() => {
     if (currentUser) {
       const newSocket = initializeSocket()
@@ -297,51 +341,43 @@ function GameInterface() {
   };
 
 
-  const handleSaveSolution = async () => {
+  const handleSaveSolution = async (description) => {
     try {
       const user = await fetchUser();
       if (!user) {
-        alert("Usuario no autenticado");
-        return;
+        throw new Error('Usuario no autenticado');
       }
-  
-      const description = prompt("Por favor, añade una breve descripción de tu solución:");
-      if (!description || description.trim() === "") {
-        alert("Necesitas añadir una descripción");
-        return;
-      }
-  
-      // Guardamos todas las piezas de userSolution
+
       const allPieces = userSolution.map((piece) => ({
         shape: piece.shape,
         coordenadas: piece.coordenadas,
         orientacion: piece.orientacion,
         initialPosition: piece.initialPosition,
       }));
-  
+
       const response = await fetch(`${VITE_API_URL}/api/user-solution`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // 🔥 Asegurar que la cookie de sesión se envíe
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          userId: user.id, // Ahora se usa el `id` obtenido de la cookie
+          userId: user.id,
           levelId,
           solutionData: allPieces,
-          description: description.trim(),
+          description,
+          startTime: startTime?.toISOString(), // Enviar tiempo de inicio
         }),
       });
-  
-      if (response.ok) {
-        alert("¡Solución guardada!");
-        setHasSavedSolution(true);
-        await fetchLatestSolutions();
-        await markLevelAsCompleted(); // Marcar nivel como completado después de guardar la solución
-      } else {
-        alert("Error al guardar la solución");
+
+      if (!response.ok) {
+        throw new Error('Error al guardar la solución');
       }
+
+      setHasSavedSolution(true);
+      await fetchLatestSolutions();
+      await markLevelAsCompleted();
     } catch (error) {
-      console.error("❌ Error al guardar la solución:", error);
-      alert("Error al guardar la solución");
+      console.error('❌ Error al guardar la solución:', error);
+      throw error;
     }
   };
 
@@ -399,9 +435,7 @@ function GameInterface() {
           if (time - 1 <= 0) {
             clearInterval(timerId);
             setIsTimeUpPopupOpen(true);
-            handleSaveSolution(); // Guardar solución
-            // Marcar nivel como completado
-            markLevelAsCompleted();
+            setIsSaveSolutionModalOpen(true); // Abrir el modal para ingresar descripción
             return 0;
           }
           return time - 1;
@@ -501,22 +535,44 @@ function GameInterface() {
 
   const handlePieceMoved = (pieceId, position, rotation) => {
     if (!socket || !chatGroupId) {
-        console.error("❌ No se puede emitir el evento pieceMoved: faltan socket o chatGroupId");
-        return;
+      console.error('❌ No se puede emitir el evento pieceMoved: faltan socket o chatGroupId');
+      return;
     }
 
-    // Asegurar que rotation no sea undefined o NaN
     const validRotation = isNaN(rotation) || rotation === undefined ? 0 : rotation;
 
+    // Enviar a WebSocket (existente)
     console.log(`📤 Emitiendo movimiento: Pieza ${pieceId} a x:${position.x}, y:${position.y}, rotación: ${validRotation} en grupo ${chatGroupId}`);
-
-    socket.emit("pieceMoved", {
-        groupId: chatGroupId,
-        pieceId,
-        position: { x: position.x, y: position.y },
-        rotation: validRotation // 🔥 Ahora siempre será un número válido
+    socket.emit('pieceMoved', {
+      groupId: chatGroupId,
+      pieceId,
+      position: { x: position.x, y: position.y },
+      rotation: validRotation,
     });
-};
+
+    // Enviar al backend para registrar en logs
+    if (currentUser) {
+      axios
+        .post(
+          `${VITE_API_URL}/api/move-piece`,
+          {
+            userId: currentUser.id,
+            levelId,
+            pieceId,
+            position: { x: position.x, y: position.y },
+            rotation: validRotation,
+          },
+          { withCredentials: true }
+        )
+        .then(() => {
+          console.log('✅ Movimiento registrado en backend');
+          fetchMoveCount(); // Actualizar conteo
+        })
+        .catch((error) => {
+          console.error('Error registrando movimiento:', error);
+        });
+    }
+  };
 
 
 
@@ -563,6 +619,9 @@ useEffect(() => {
 
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
+      <div className="move-count p-2">
+        <span className="font-bold">Movimientos: {moveCount}</span>
+      </div>
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
         <div className="timer flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -629,7 +688,7 @@ useEffect(() => {
             )}
             {!hasSavedSolution ? (
               <button
-                onClick={handleSaveSolution}
+                onClick={() => setIsSaveSolutionModalOpen(true)}
                 className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
               >
                 Guardar Solución
@@ -690,9 +749,7 @@ useEffect(() => {
                       <button
                         type="submit"
                         disabled={waitingForPartner}
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 ${
-                          waitingForPartner ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'
-                        }`}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 ${waitingForPartner ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'}`}
                       >
                         <svg
                           width="24"
@@ -736,6 +793,11 @@ useEffect(() => {
       )}
   
       <TimeUpPopup isOpen={isTimeUpPopupOpen} onClose={handleCloseTimeUpPopup} />
+      <SaveSolutionModal
+        isOpen={isSaveSolutionModalOpen}
+        onClose={() => setIsSaveSolutionModalOpen(false)}
+        onSave={handleSaveSolution}
+      />
     </div>
   );
 }  

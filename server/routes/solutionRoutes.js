@@ -1,5 +1,19 @@
 const express = require('express');
-const {getSolution, saveUserSolution, getLatestSolutions, getRandomSolutionFromAll, rateSolution, checkUserRating, getAverageRatings, getBestSolutions, getAssignmentsForSolution, getAssignedSolutions} = require('../controllers/solutionController');
+const {
+    getSolution,
+    saveUserSolution,
+    getLatestSolutions,
+    getRandomSolutionFromAll,
+    rateSolution,
+    checkUserRating,
+    getAverageRatings,
+    getBestSolutions,
+    getAssignmentsForSolution,
+    getAssignedSolutions,
+    logPieceMovement,
+    logLevelStart,
+    getMoveCount,
+  } = require('../controllers/solutionController');
 const router = express.Router();
 
 router.get('/solution/:levelId', getSolution);
@@ -12,6 +26,9 @@ router.get("/average-ratings", getAverageRatings);
 router.get('/solutions/best/:levelId', getBestSolutions);
 router.get('/solution-assignments/:solutionId', getAssignmentsForSolution);
 router.get('/assigned-solutions/:levelId/:userId', getAssignedSolutions);
+router.post('/move-piece', logPieceMovement);
+router.post('/start-level', logLevelStart);
+router.get('/move-count', getMoveCount);
 
 
 

@@ -3,15 +3,11 @@ import { useNavigate } from "react-router-dom";
 import React from "react";
 import { Button } from "../ui/button"; // Importamos el botón reutilizable
 
-const LevelButton = ({ level, name, unlocked, stars, completed, onClick }) => {
+const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleLevelSelect }) => {
   const navigate = useNavigate();
 
   const handleViewSolutions = () => {
     navigate(`/solutions/${level}`);
-  };
-
-  const handleRetry = () => {
-    navigate(`/game/${level}`);
   };
 
   return (
@@ -50,7 +46,7 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <button
-              onClick={handleRetry}
+              onClick={() => handleLevelSelect(level)}
               className="absolute inset-0 flex items-center justify-center bg-green-600 bg-opacity-90 text-white text-sm font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
             >
               Repetir
@@ -87,21 +83,21 @@ export default function LevelSelection() {
           method: "GET",
           credentials: "include",
         });
-  
+
         if (!userResponse.ok) throw new Error("Usuario no autenticado");
-  
+
         const user = await userResponse.json();
         console.log("✅ Usuario obtenido desde sesión:", user);
-  
+
         const response = await fetch(`${VITE_API_URL}/api/levels/progress/${user.id}`, {
           method: "GET",
           credentials: "include",
         });
-  
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-  
+
         const data = await response.json();
         console.log("📌 Niveles obtenidos:", data);
         setLevels(data);
@@ -112,9 +108,9 @@ export default function LevelSelection() {
         setLoading(false);
       }
     };
-  
+
     fetchLevels();
-  }, []); // Nota: No agregamos dependencias adicionales para evitar recargas innecesarias
+  }, []);
 
   const handleLevelSelect = async (levelId) => {
     try {
@@ -122,36 +118,34 @@ export default function LevelSelection() {
         method: "GET",
         credentials: "include",
       });
-  
+
       if (!userResponse.ok) {
         throw new Error("Usuario no autenticado");
       }
-  
+
       const user = await userResponse.json();
       if (!user || !user.id) {
         throw new Error("Error: Datos de usuario inválidos en la sesión.");
       }
-  
+
       const unlockResponse = await fetch(`${VITE_API_URL}/api/levels/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ userId: user.id, currentLevelId: levelId }),
       });
-  
+
       if (!unlockResponse.ok) {
         throw new Error(`HTTP error! status: ${unlockResponse.status}`);
       }
-  
+
       const selectedLevel = levels.find((level) => level.level === levelId);
       if (!selectedLevel) {
         throw new Error("Nivel seleccionado no encontrado.");
       }
-  
-      // Muestra el modal de video solo después de verificar todo lo anterior
+
       setSelectedLevel(selectedLevel);
       setShowVideoModal(true);
-  
     } catch (err) {
       console.error("Error desbloqueando nivel:", err);
       setError("No se pudo iniciar el nivel. Intenta nuevamente.");
@@ -199,6 +193,7 @@ export default function LevelSelection() {
               stars={level.stars}
               completed={level.completed}
               onClick={() => handleLevelSelect(level.level)}
+              handleLevelSelect={handleLevelSelect}
             />
           ))}
         </div>
@@ -217,7 +212,6 @@ export default function LevelSelection() {
           </div>
         )}
 
-        {/* Botón para ver los Ratings en otra página */}
         <div className="flex items-center justify-center mt-6">
           <Button variant="default" onClick={() => navigate("/ratings")}>
             Ver Ratings

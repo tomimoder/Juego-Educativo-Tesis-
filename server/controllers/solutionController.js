@@ -19,36 +19,49 @@ const getSolution = async (req, res) => {
     }
 };
 
+// solutionController.js
 const saveUserSolution = async (req, res) => {
     try {
-        const { userId, levelId, solutionData, description } = req.body;
-
-        if (!userId || !levelId || !solutionData || !description) {
-            return res.status(400).json({ message: "Faltan datos requeridos" });
-        }
-
-        const [result] = await pool.query(
-            'INSERT INTO usertangramsolutions (user_id, level_id, solution_data, description) VALUES (?, ?, ?, ?)',
-            [userId, levelId, JSON.stringify(solutionData), description]
-        );
-
-        // Aquí asignas usuarios
-        try {
-            await assignUsersToSolution(result.insertId, userId);
-        } catch (assignmentError) {
-            console.warn("Advertencia: No se asignaron usuarios automáticamente", assignmentError.message);
-        }
-
-        res.status(201).json({
-            message: "Solution saved successfully",
-            solutionId: result.insertId
-        });
-
+      const { userId, levelId, solutionData, description, startTime } = req.body;
+  
+      if (!userId || !levelId || !solutionData || !description || !startTime) {
+        return res.status(400).json({ message: 'Faltan datos requeridos' });
+      }
+  
+      const start = new Date(startTime);
+      const end = new Date();
+      const timeSpent = Math.round((end - start) / 1000); // Tiempo en segundos
+  
+      const [result] = await pool.query(
+        'INSERT INTO usertangramsolutions (user_id, level_id, solution_data, description) VALUES (?, ?, ?, ?)',
+        [userId, levelId, JSON.stringify(solutionData), description]
+      );
+  
+      // Registrar log
+      await logAction(userId, 'SAVE_SOLUTION', {
+        levelId,
+        solutionId: result.insertId,
+        description,
+        timeSpent,
+        timestamp: end.toISOString(),
+      });
+  
+      // Asignar usuarios
+      try {
+        await assignUsersToSolution(result.insertId, userId);
+      } catch (assignmentError) {
+        console.warn('Advertencia: No se asignaron usuarios automáticamente', assignmentError.message);
+      }
+  
+      res.status(201).json({
+        message: 'Solution saved successfully',
+        solutionId: result.insertId,
+      });
     } catch (error) {
-        console.error("Error saving solution:", error);
-        res.status(500).json({ message: "Error saving solution" });
+      console.error('Error saving solution:', error);
+      res.status(500).json({ message: 'Error saving solution' });
     }
-};
+  };
 
 
 const getLatestSolutions = async (req, res) => {
@@ -88,46 +101,55 @@ const getLatestSolutions = async (req, res) => {
 };
 
 
+// solutionController.js
 const rateSolution = async (req, res) => {
     const { solutionId, userId, rating, comment } = req.body;
-    
+  
     try {
-        await pool.query('START TRANSACTION');
-
-        await pool.query(
-            `INSERT INTO solutionratings (solution_id, user_id, rating, comment)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE rating = ?, comment = ?`,
-            [solutionId, userId, rating, comment, rating, comment]
-        );
-
-        const [ratings] = await pool.query(
-            `SELECT AVG(rating) as avg_rating, COUNT(*) as total
-             FROM solutionratings
-             WHERE solution_id = ?`,
-            [solutionId]
-        );
-
-        await pool.query(
-            `UPDATE usertangramsolutions 
-             SET average_rating = ?, total_ratings = ?
-             WHERE id = ?`,
-            [ratings[0].avg_rating, ratings[0].total, solutionId]
-        );
-
-        await pool.query('COMMIT');
-
-        res.json({
-            message: "Rating saved successfully",
-            newAverage: ratings[0].avg_rating,
-            totalRatings: ratings[0].total
-        });
+      await pool.query('START TRANSACTION');
+  
+      await pool.query(
+        `INSERT INTO solutionratings (solution_id, user_id, rating, comment)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE rating = ?, comment = ?`,
+        [solutionId, userId, rating, comment, rating, comment]
+      );
+  
+      const [ratings] = await pool.query(
+        `SELECT AVG(rating) as avg_rating, COUNT(*) as total
+         FROM solutionratings
+         WHERE solution_id = ?`,
+        [solutionId]
+      );
+  
+      await pool.query(
+        `UPDATE usertangramsolutions 
+         SET average_rating = ?, total_ratings = ?
+         WHERE id = ?`,
+        [ratings[0].avg_rating, ratings[0].total, solutionId]
+      );
+  
+      // Registrar log
+      await logAction(userId, 'RATE_SOLUTION', {
+        solutionId,
+        rating,
+        comment,
+        timestamp: new Date().toISOString(),
+      });
+  
+      await pool.query('COMMIT');
+  
+      res.json({
+        message: 'Rating saved successfully',
+        newAverage: ratings[0].avg_rating,
+        totalRatings: ratings[0].total,
+      });
     } catch (error) {
-        await pool.query('ROLLBACK');
-        console.error("Error saving rating:", error);
-        res.status(500).json({ message: "Error saving rating" });
+      await pool.query('ROLLBACK');
+      console.error('Error saving rating:', error);
+      res.status(500).json({ message: 'Error saving rating' });
     }
-};
+  };
 
 const checkUserRating = async (req, res) => {
     const { solutionId, userId } = req.params;
@@ -330,7 +352,87 @@ const getAssignedSolutions = async (req, res) => {
     }
 };
 
+//Funcion para registrar logs
+const logAction = async (userId, action, details) => {
+    try{
+        await pool.query(
+            'INSERT INTO logs (user_id, action, details) VALUES (?, ?, ?)',
+            [userId, action, JSON.stringify(details)]
+        );
+        console.log(`✅ Log registrado: userId=${userId}, action=${action}`);
+    } catch(error){
+        console.error('❌ Error registrando log:', error);
+    }
+};
 
+
+const logPieceMovement = async (req, res) => {
+    try{
+        const { userId, levelId, pieceId, position, rotation } = req.body;
+
+        if (!userId || !levelId || !pieceId || !position || rotation === undefined){
+            return res.status(400).json({ message: "Faltan datos requeridos" });
+        }
+
+        await logAction(userId, 'MOVE_PIECE', {
+            levelId,
+            pieceId,
+            position,
+            rotation,
+            timestamp: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: "Movimiento registrado" });
+    } catch(error){
+        console.error("Error registrando movimiento de pieza:", error);
+        res.status(500).json({ message: "Error registrando movimiento de pieza" });
+    }
+};
+
+const logLevelStart = async (req, res) => {
+    try{
+        const {userId, levelId} = req.body;
+
+        if(!userId || !levelId){
+            return res.status(400).json({ message: "Faltan datos requeridos" });
+        }
+
+        await logAction(userId, 'START_LEVEL', {
+            levelId,
+            timestamp: new Date().toISOString(),
+          });
+
+        res.status(200).json({ message: "Inicio de nivel registrado" });
+    } catch(error){
+        console.error("Error registrando inicio de nivel:", error);
+        res.status(500).json({ message: "Error registrando inicio de nivel" });
+    }
+};
+
+const getMoveCount = async (req, res) => {
+    try{
+        const {userId, levelId} = req.body;
+
+        if(!userId){
+            return res.status(400).json({ message: "Faltan userId" });
+        }
+
+        let query = 'SELECT COUNT(*) as count FROM logs WHERE user_id = ? AND action = "MOVE_PIECE"';
+        let params = [userId];
+
+        if (levelId){
+            query += ' AND JSON_EXTRACT(details, "$.levelId") = ?';
+            params.push(levelId);
+        }
+
+        const [result] = await pool.query(query, params);
+
+        res.json({ moveCount: result[0].count });
+    } catch (error){
+        console.error('Error contando movimientos:', error);
+        res.status(500).json({ message: 'Error contando movimientos' });
+    }
+};
 
 
 
@@ -348,5 +450,9 @@ module.exports = {
     getBestSolutions,
     getAssignmentsForSolution,
     assignUsersToSolution,
-    getAssignedSolutions
+    getAssignedSolutions,
+    logAction,
+    logPieceMovement,
+    logLevelStart,
+    getMoveCount
 }

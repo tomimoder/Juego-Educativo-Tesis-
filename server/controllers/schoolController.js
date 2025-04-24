@@ -11,11 +11,23 @@ const getSchools = async (req, res) => {
 };
 
 const getStudents = async (req, res) => {
+  const { schoolId } = req.params;
+  const { nivel_curso } = req.query;
+
+  if (!schoolId) {
+    return res.status(400).json({ error: 'Falta el schoolId' });
+  }
+
   try {
-    const [students] = await pool.query(
-      'SELECT * FROM users WHERE school_id = ?',
-      [req.params.schoolId]
-    );
+    let query = 'SELECT id, nombre, apellido FROM users WHERE school_id = ?';
+    let params = [schoolId];
+
+    if (nivel_curso) {
+      query += ' AND nivel_curso = ?';
+      params.push(nivel_curso);
+    }
+
+    const [students] = await pool.query(query, params);
     res.json(students);
   } catch (error) {
     console.error('Error fetching students:', error);
