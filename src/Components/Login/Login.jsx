@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
-// Componente de formulario de consentimiento (sin cambios)
+// Componente de formulario de consentimiento
 const ConsentForm = ({ onAccept, onReject }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -12,19 +12,19 @@ const ConsentForm = ({ onAccept, onReject }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
       <div
         className={`bg-white rounded-lg shadow-xl transition-all duration-300 ease-in-out ${
-          isExpanded ? 'w-full h-full max-w-4xl p-10 overflow-y-auto' : 'max-w-md w-full p-8'
+          isExpanded ? 'w-full max-w-4xl h-[90vh] p-6 sm:p-10 overflow-y-auto' : 'w-full max-w-md p-6 sm:p-8'
         }`}
       >
-        <h2 className="text-2xl font-bold mb-4">Términos y Condiciones</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-4">Términos y Condiciones</h2>
         <div
           className={`border border-gray-300 rounded p-4 bg-gray-50 mb-4 ${
-            isExpanded ? 'h-[calc(100vh-300px)] overflow-y-auto' : 'max-h-40 overflow-y-auto'
+            isExpanded ? 'max-h-[70vh] overflow-y-auto' : 'max-h-48 sm:max-h-60 overflow-y-auto'
           }`}
         >
-          <p className="text-gray-700 whitespace-pre-line">
+          <p className="text-gray-700 text-sm sm:text-base whitespace-pre-line">
             Al utilizar nuestra aplicación, aceptas nuestros términos y condiciones...
             {/* Texto sin cambios */}
           </p>
@@ -32,7 +32,7 @@ const ConsentForm = ({ onAccept, onReject }) => {
         <div className="mb-4 text-right">
           <button
             onClick={toggleExpand}
-            className="text-blue-600 hover:underline text-sm"
+            className="text-blue-600 hover:underline text-sm sm:text-base"
           >
             {isExpanded ? 'Ver menos' : 'Ver más'}
           </button>
@@ -41,13 +41,13 @@ const ConsentForm = ({ onAccept, onReject }) => {
           <div className="flex space-x-4 justify-end">
             <button
               onClick={onReject}
-              className="bg-red-500 hover:bg-red-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+              className="bg-red-500 hover:bg-red-600 text-white py-2.5 px-6 sm:px-8 rounded-lg font-medium text-sm sm:text-base transition-colors"
             >
               Rechazar
             </button>
             <button
               onClick={onAccept}
-              className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+              className="bg-green-500 hover:bg-green-600 text-white py-2.5 px-6 sm:px-8 rounded-lg font-medium text-sm sm:text-base transition-colors"
             >
               Aceptar
             </button>
@@ -211,22 +211,22 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F7FF] flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-8 text-gray-900">
+    <div className="min-h-screen bg-[#F8F7FF] flex flex-col items-center justify-center px-4 sm:px-6">
+      <div className="w-full max-w-md sm:max-w-lg">
+        <h1 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8 text-gray-900">
           Inicia sesión para continuar
         </h1>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8 space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-500 px-4 py-3 rounded-md text-sm">
+            <div className="bg-red-50 text-red-500 px-4 py-3 rounded-md text-sm sm:text-base">
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="school" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="school" className="block text-sm sm:text-base font-medium text-gray-700">
                 Selecciona tu colegio
               </label>
               <select
@@ -237,7 +237,7 @@ export default function Login({ onLogin }) {
                   setSelectedCourse('');
                   setSelectedStudent('');
                 }}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 rounded-md border border-gray-200 bg-gray-50 text-gray-900 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 required
               >
                 <option value="">Escoger colegio</option>
@@ -250,7 +250,7 @@ export default function Login({ onLogin }) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="course" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="course" className="block text-sm sm:text-base font-medium text-gray-700">
                 Selecciona tu curso
               </label>
               <select
@@ -260,7 +260,7 @@ export default function Login({ onLogin }) {
                   setSelectedCourse(e.target.value);
                   setSelectedStudent('');
                 }}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 rounded-md border border-gray-200 bg-gray-50 text-gray-900 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 required
                 disabled={!selectedSchool}
               >
@@ -274,14 +274,14 @@ export default function Login({ onLogin }) {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="student" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="student" className="block text-sm sm:text-base font-medium text-gray-700">
                 Selecciona tu nombre
               </label>
               <select
                 id="student"
                 value={selectedStudent}
                 onChange={(e) => setSelectedStudent(e.target.value)}
-                className="w-full px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 rounded-md border border-gray-200 bg-gray-50 text-gray-900 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 required
                 disabled={!selectedCourse}
               >
@@ -297,7 +297,7 @@ export default function Login({ onLogin }) {
             <button
               type="submit"
               disabled={!selectedSchool || !selectedCourse || !selectedStudent}
-              className="w-full py-2.5 px-4 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-md text-sm sm:text-base hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Jugar
             </button>

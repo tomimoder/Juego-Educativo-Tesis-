@@ -622,6 +622,7 @@ useEffect(() => {
       <div className="move-count p-2">
         <span className="font-bold">Movimientos: {moveCount}</span>
       </div>
+  
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
         <div className="timer flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -631,7 +632,7 @@ useEffect(() => {
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
           </span>
         </div>
-        <div className="level font-bold">Nivel {levelData.level}</div>
+        <div className="level font-bold text-center">Nivel {levelData.level}</div>
         <div className="coins flex items-center">
           <span className="font-bold mr-2">{levelData.stars}</span>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -640,17 +641,22 @@ useEffect(() => {
         </div>
       </div>
   
-      <div className="flex-grow flex">
-        <div className="w-3/4 p-4 flex flex-col">
+      <div className="flex-grow flex flex-col lg:flex-row">
+        {/* Columna Principal */}
+        <div className="w-full lg:w-3/4 p-4 flex flex-col">
+          {/* Nivel 1: dos bloques lado a lado */}
           {levelData.level === 1 ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '650px' }}></div>
-              <RandomBackgroundDiv />
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+              <div className="bg-white rounded-lg shadow-lg p-4 w-full md:w-1/2 h-[300px] md:h-[550px]" />
+              <div className="w-full md:w-1/2">
+                <RandomBackgroundDiv />
+              </div>
             </div>
           ) : (
-            <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '1400px' }}></div>
+            <div className="bg-white rounded-lg shadow-lg p-4 mb-4 h-[300px] md:h-[550px] w-full" />
           )}
   
+          {/* Tablero Tangram */}
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
             {isPiecesViable && (
               <TangramBoard
@@ -666,50 +672,57 @@ useEffect(() => {
           </div>
         </div>
   
-        <div className="w-1/4 p-4 flex flex-col">
+        {/* Sidebar */}
+        <div className="w-full lg:w-1/4 p-4 flex flex-col">
+          {/* Instrucciones */}
           <div className={`bg-green-200 rounded-lg p-4 mb-4 ${isInstructionsVisible ? '' : 'hidden'}`}>
             <h2 className="font-bold mb-2">Instrucciones</h2>
             <p>{levelData.instructions}</p>
           </div>
   
+          {/* Descripción */}
           <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
             <h2 className="font-bold mb-2">Descripción</h2>
             <p>{userSolution.description}</p>
           </div>
   
-          <div className="flex justify-between mb-4">
-            <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg">
+          {/* Botones */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg flex-1">
               {isInstructionsVisible ? 'Ocultar Instrucciones' : 'Mostrar Instrucciones'}
             </button>
             {levelData.level === 1 && (
-              <button onClick={togglePiecesViability} className="bg-yellow-500 text-white p-2 rounded-lg">
+              <button onClick={togglePiecesViability} className="bg-yellow-500 text-white p-2 rounded-lg flex-1">
                 {isPiecesViable ? 'Ocultar Piezas' : 'Mostrar Piezas'}
               </button>
             )}
             {!hasSavedSolution ? (
               <button
                 onClick={() => setIsSaveSolutionModalOpen(true)}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex-1"
               >
                 Guardar Solución
               </button>
             ) : (
               <button
                 onClick={handleViewSolutions}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex-1"
               >
                 Ver Soluciones
               </button>
             )}
           </div>
   
+          {/* Chat Room */}
           {(levelData.level === 2 || levelData.level === 4) && (
             <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
               <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
                 {error ? (
                   <div className="text-center text-red-600">{error}</div>
                 ) : waitingForPartner ? (
-                  <div className="text-center text-red-600">No puedes enviar mensajes hasta que tu compañero se conecte, cuando puedas mover las piezas por favor recarga la pagina para poder hablar.</div>
+                  <div className="text-center text-red-600">
+                    No puedes enviar mensajes hasta que tu compañero se conecte.
+                  </div>
                 ) : (
                   <>
                     <div className="messages overflow-y-auto mb-4" style={{ maxHeight: '300px', minHeight: '300px' }}>
@@ -730,14 +743,8 @@ useEffect(() => {
                       })}
                       <div ref={messagesEndRef} />
                     </div>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (waitingForPartner) return; // Bloquea envío si sigue esperando
-                        handleSendMessage(e);
-                      }}
-                      className="relative"
-                    >
+  
+                    <form onSubmit={handleSendMessage} className="relative">
                       <input
                         type="text"
                         value={newMessage}
@@ -751,21 +758,8 @@ useEffect(() => {
                         disabled={waitingForPartner}
                         className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 ${waitingForPartner ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'}`}
                       >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="transform rotate-90"
-                        >
-                          <path
-                            d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="transform rotate-90">
+                          <path d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </button>
                     </form>
@@ -777,9 +771,10 @@ useEffect(() => {
         </div>
       </div>
   
+      {/* Modales y Popups */}
       {showSolutions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white w-[100vw] h-[100vh] p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
+          <div className="bg-white w-full h-full p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
             <h3 className="text-xl font-bold mb-4">Últimas Soluciones</h3>
             <SolutionsList levelId={levelId} />
             <button
@@ -800,6 +795,7 @@ useEffect(() => {
       />
     </div>
   );
+  
 }  
 
 export default GameInterface

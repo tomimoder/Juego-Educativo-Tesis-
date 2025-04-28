@@ -14,19 +14,19 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleL
     <div className="relative flex flex-col items-center">
       <button
         onClick={onClick}
-        className={`relative w-24 h-24 rounded-lg flex flex-col items-center justify-center ${
+        className={`relative w-20 sm:w-24 h-20 sm:h-24 rounded-lg flex flex-col items-center justify-center ${
           unlocked ? "bg-purple-300 hover:bg-purple-400" : "bg-gray-400"
         }`}
         disabled={!unlocked}
       >
-        <span className="text-xl font-bold">{level}</span>
-        <span className="text-xs mt-1">{name}</span>
+        <span className="text-base sm:text-xl font-bold">{level}</span>
+        <span className="text-sm sm:text-xs mt-1">{name}</span>
         <div className="flex mt-1">
           {[...Array(3)].map((_, i) => (
             <svg
               key={i}
               xmlns="http://www.w3.org/2000/svg"
-              className={`h-4 w-4 ${i < stars ? "text-yellow-400" : "text-gray-300"}`}
+              className={`h-5 w-5 ${i < stars ? "text-yellow-400" : "text-gray-300"}`}
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -38,7 +38,7 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleL
           <div className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-75 rounded-lg group">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12 text-white"
+              className="h-10 sm:h-12 w-10 sm:w-12 text-white"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -57,7 +57,7 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleL
       {completed && (
         <button
           onClick={handleViewSolutions}
-          className="mt-2 text-xs bg-blue-500 text-white rounded px-2 py-1 hover:bg-blue-600"
+          className="mt-2 text-sm bg-blue-500 text-white rounded px-3 py-1.5 hover:bg-blue-600"
         >
           Ver Soluciones
         </button>
@@ -160,7 +160,7 @@ export default function LevelSelection() {
   if (loading) {
     return (
       <div className="min-h-screen bg-yellow-200 flex items-center justify-center">
-        <div className="text-2xl font-bold text-purple-700">Loading...</div>
+        <div className="text-xl sm:text-2xl font-bold text-purple-700">Loading...</div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function LevelSelection() {
   if (error) {
     return (
       <div className="min-h-screen bg-yellow-200 flex items-center justify-center">
-        <div className="text-2xl font-bold text-red-600">{error}</div>
+        <div className="text-xl sm:text-2xl font-bold text-red-600">{error}</div>
         <button
           onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -180,10 +180,10 @@ export default function LevelSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-yellow-200 flex items-center justify-center">
-      <div className="bg-yellow-300 p-8 rounded-3xl shadow-lg">
-        <h1 className="text-4xl font-bold text-purple-800 text-center mb-8">Selecciona un nivel</h1>
-        <div className="grid grid-cols-5 gap-4">
+    <div className="min-h-screen bg-yellow-200 flex items-center justify-center px-4 sm:px-6">
+      <div className="bg-yellow-300 p-4 sm:p-8 rounded-3xl shadow-lg w-full max-w-5xl">
+        <h1 className="text-2xl sm:text-4xl font-bold text-purple-800 text-center mb-6 sm:mb-8">Selecciona un nivel</h1>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
           {levels.map((level) => (
             <LevelButton
               key={level.level}
@@ -199,8 +199,8 @@ export default function LevelSelection() {
         </div>
 
         {showVideoModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-4 rounded-lg shadow-lg">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-2xl">
               <video
                 width="100%"
                 controls
@@ -213,7 +213,7 @@ export default function LevelSelection() {
         )}
 
         <div className="flex items-center justify-center mt-6">
-          <Button variant="default" onClick={() => navigate("/ratings")}>
+          <Button variant="default" className="px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base" onClick={() => navigate("/ratings")}>
             Ver Ratings
           </Button>
         </div>

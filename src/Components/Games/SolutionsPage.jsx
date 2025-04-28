@@ -216,14 +216,11 @@ const SolutionsPage = ({
         </button>
       </div>
   
-      <div className="flex-grow flex">
+      <div className="flex-grow flex flex-col lg:flex-row">
         {!selectedSolution && (
-          <div className="w-1/4 p-4 flex flex-col">
+          <div className="w-full lg:w-1/4 p-4 flex flex-col">
             <h3 className="font-bold mb-2">Lista de Soluciones</h3>
-            <div
-              className="bg-white rounded-lg p-4 shadow overflow-y-auto"
-              style={{ maxHeight: "500px" }}
-            >
+            <div className="bg-white rounded-lg p-4 shadow overflow-y-auto max-h-[500px]">
               {solutions.length > 0 ? (
                 solutions.map((solution, index) => (
                   <button
@@ -243,14 +240,13 @@ const SolutionsPage = ({
           </div>
         )}
   
-        <div className={selectedSolution ? "w-full p-4 flex flex-col items-center" : "w-3/4 p-4 flex flex-col items-center"}>
+        <div className={selectedSolution ? "w-full p-4 flex flex-col items-center" : "w-full lg:w-3/4 p-4 flex flex-col items-center"}>
           {selectedSolution && (
-            <div className="w-full bg-gray-100 p-4 rounded-lg mb-4 shadow-lg flex justify-between items-center">
-              <div>
+            <div className="w-full bg-gray-100 p-4 rounded-lg mb-4 shadow-lg flex flex-col md:flex-row md:justify-between md:items-center">
+              <div className="mb-2 md:mb-0">
                 <p className="mb-2 font-semibold">{selectedSolution.description}</p>
                 <p className="text-sm text-gray-600">
-                  Calificación promedio:{" "}
-                  {formatRating(selectedSolution.average_rating)} (
+                  Calificación promedio: {formatRating(selectedSolution.average_rating)} (
                   {selectedSolution.total_ratings || 0} calificaciones)
                 </p>
               </div>
@@ -263,90 +259,95 @@ const SolutionsPage = ({
             </div>
           )}
   
-          <div
-          className="flex-grow bg-white rounded-lg shadow-lg overflow-hidden relative"
-          style={{ height: "550px", width: "1400px" }}
-        >
-          {selectedSolution ? (
-            <>
-              <p className="text-lg font-bold mb-4"> Solución</p>
-              {(() => {
-                const rawPieces = selectedSolution.solution_data;
-
-                // 🔹 Filtrar piezas válidas
-                const validPieces = rawPieces.filter(
-                  (p) => p && p.shape && Array.isArray(p.coordenadas) && p.coordenadas[0]
-                );
-
-                // 🔹 Calcular bounding box
-                const coords = validPieces.map(p => p.coordenadas[0]);
-                const minX = Math.min(...coords.map(c => c.x));
-                const maxX = Math.max(...coords.map(c => c.x));
-                const minY = Math.min(...coords.map(c => c.y));
-                const maxY = Math.max(...coords.map(c => c.y));
-
-                const boundingWidth = maxX - minX;
-                const boundingHeight = maxY - minY;
-
-                const containerWidth = 1400;
-                const containerHeight = 550;
-
-                const offsetX = containerWidth / 2 - (minX + boundingWidth / 2);
-                const offsetY = containerHeight / 2 - (minY + boundingHeight / 2);
-
-                // 🔹 Renderizar piezas válidas
-                return validPieces.map((piece, index) => {
-                  console.log("📌 Pieza:", piece.shape, piece.coordenadas[0]);
-
-                  const { svgPath, fillColor, width, height, centerPoint } = getPieceAttributesFull(piece.shape, index);
-                  const [centerX, centerY] = centerPoint.split(',').map(Number);
-
-                  const posX = piece.coordenadas[0].x + offsetX;
-                  const posY = piece.coordenadas[0].y + offsetY;
-
-                  return (
-                    <svg
-                      key={index}
-                      width="120"
-                      height="120"
-                      viewBox="-10 -10 100 100"
-                      style={{
-                        position: "absolute",
-                        left: `${posX}px`,
-                        top: `${posY}px`,
-                        overflow: 'visible',
-                      }}
-                    >
-                      <g transform={`rotate(${piece.orientacion || 0} ${centerX} ${centerY})`}>
-                        <path d={svgPath} fill={fillColor} stroke="black" strokeWidth="2" />
-                      </g>
-                    </svg>
+          {/* Contenedor de Solución */}
+          <div className="flex-grow bg-white rounded-lg shadow-lg overflow-hidden relative w-full max-w-[1400px] h-[300px] md:h-[550px]">
+            {selectedSolution ? (
+              <>
+                <p className="text-lg font-bold mb-4 text-center mt-2">Solución</p>
+                {(() => {
+                  const rawPieces = selectedSolution.solution_data;
+                  const validPieces = rawPieces.filter(
+                    (p) => p && p.shape && Array.isArray(p.coordenadas) && p.coordenadas[0]
                   );
-                });
-              })()}
-
-            </>
-          ) : (
-            <p className="text-center text-gray-500">Selecciona una solución para visualizar</p>
-          )}
-        </div>
-
-        </div>
-      </div>
-      {selectedSolution && currentUser && currentUser.id !== selectedSolution.user_id && !hasRated && (
-            <div className="w-1/3 bg-gray-50 p-4 rounded">
-              <p className="font-bold mb-2">Calificación:</p>
-              {[1, 2, 3, 4, 5, 6, 7].map((star) => (
-                <button key={star} onClick={() => setSelectedRating(star)} className={`text-2xl ${star <= selectedRating ? 'text-yellow-400' : 'text-gray-300'}`}>
-                  ★
-                </button>
-              ))}
-              <textarea value={comment} onChange={(e) => setComment(e.target.value)} className="w-full p-2 border rounded" rows="3" />
-              <button onClick={handleSubmitRating} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Enviar Calificación</button>
+                  const coords = validPieces.map(p => p.coordenadas[0]);
+                  const minX = Math.min(...coords.map(c => c.x));
+                  const maxX = Math.max(...coords.map(c => c.x));
+                  const minY = Math.min(...coords.map(c => c.y));
+                  const maxY = Math.max(...coords.map(c => c.y));
+  
+                  const boundingWidth = maxX - minX;
+                  const boundingHeight = maxY - minY;
+  
+                  const containerWidth = 1400;
+                  const containerHeight = 550;
+  
+                  const offsetX = containerWidth / 2 - (minX + boundingWidth / 2);
+                  const offsetY = containerHeight / 2 - (minY + boundingHeight / 2);
+  
+                  return validPieces.map((piece, index) => {
+                    const { svgPath, fillColor, width, height, centerPoint } = getPieceAttributesFull(piece.shape, index);
+                    const [centerX, centerY] = centerPoint.split(',').map(Number);
+  
+                    const posX = piece.coordenadas[0].x + offsetX;
+                    const posY = piece.coordenadas[0].y + offsetY;
+  
+                    return (
+                      <svg
+                        key={index}
+                        width="120"
+                        height="120"
+                        viewBox="-10 -10 100 100"
+                        style={{
+                          position: "absolute",
+                          left: `${posX}px`,
+                          top: `${posY}px`,
+                          overflow: 'visible',
+                        }}
+                      >
+                        <g transform={`rotate(${piece.orientacion || 0} ${centerX} ${centerY})`}>
+                          <path d={svgPath} fill={fillColor} stroke="black" strokeWidth="2" />
+                        </g>
+                      </svg>
+                    );
+                  });
+                })()}
+              </>
+            ) : (
+              <p className="text-center text-gray-500 mt-4">Selecciona una solución para visualizar</p>
+            )}
+          </div>
+  
+          {/* Calificación */}
+          {selectedSolution && currentUser && currentUser.id !== selectedSolution.user_id && !hasRated && (
+            <div className="w-full md:w-1/2 lg:w-1/3 bg-gray-50 p-4 rounded mt-6">
+              <p className="font-bold mb-2 text-center">Calificación:</p>
+              <div className="flex justify-center mb-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((star) => (
+                  <button key={star} onClick={() => setSelectedRating(star)} className={`text-2xl ${star <= selectedRating ? 'text-yellow-400' : 'text-gray-300'}`}>
+                    ★
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="w-full p-2 border rounded mb-2"
+                rows="3"
+                placeholder="Escribe un comentario (opcional)"
+              />
+              <button
+                onClick={handleSubmitRating}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+              >
+                Enviar Calificación
+              </button>
             </div>
           )}
+        </div>
+      </div>
     </div>
   );
+  
   
 };
 

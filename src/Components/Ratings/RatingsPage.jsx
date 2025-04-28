@@ -81,17 +81,18 @@ export default function RatingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">Tu Posición en el Ranking</h1>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4 text-center">Tu Posición en el Ranking</h1>
+  
       <button
         onClick={() => navigate(-1)}
-        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        className="mb-6 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
       >
         Volver
       </button>
-
+  
       {loading ? (
-        <div className="text-xl text-gray-600">Cargando datos...</div>
+        <div className="text-lg md:text-xl text-gray-600">Cargando datos...</div>
       ) : error ? (
         <div className="text-red-500">{error}</div>
       ) : !currentUserId ? (
@@ -99,33 +100,33 @@ export default function RatingsPage() {
       ) : currentUserIndex < 0 ? (
         <div className="text-red-500">No se encontró el usuario en el ranking</div>
       ) : (
-        <div className="overflow-auto max-h-96 w-full max-w-lg">
-          <table className="w-full border-collapse border border-gray-300 bg-white">
+        <div className="overflow-x-auto w-full max-w-4xl">
+          <table className="w-full border-collapse border border-gray-300 bg-white text-sm md:text-base">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-4 py-2">Posición</th>
-                <th className="border border-gray-300 px-4 py-2">Usuario</th>
-                <th className="border border-gray-300 px-4 py-2">Rating Promedio</th>
-                <th className="border border-gray-300 px-4 py-2">Total Calificaciones</th>
+              <tr className="bg-gray-200">
+                <th className="border border-gray-300 px-2 md:px-4 py-2">Posición</th>
+                <th className="border border-gray-300 px-2 md:px-4 py-2">Usuario</th>
+                <th className="border border-gray-300 px-2 md:px-4 py-2">Rating Promedio</th>
+                <th className="border border-gray-300 px-2 md:px-4 py-2">Total Calificaciones</th>
               </tr>
             </thead>
             <tbody>
               {displayRatings.length > 0 ? (
                 displayRatings.map((rating) => (
                   <tr
-                    key={rating.user_id} // Usamos 'user_id' como clave
-                    className={`text-center ${rating.user_id === currentUserId ? "bg-yellow-100" : ""}`} // Usamos 'user_id' para resaltar
+                    key={rating.user_id}
+                    className={`text-center ${rating.user_id === currentUserId ? "bg-yellow-100" : ""}`}
                   >
-                    <td className="border border-gray-300 px-4 py-2">{rating.position}</td>
-                    <td className="border border-gray-300 px-4 py-2">{`${rating.nombre || "Desconocido"} ${
-                      rating.apellido || ""
-                    }`}</td>
-                    <td className="border border-gray-300 px-4 py-2">
+                    <td className="border border-gray-300 px-2 md:px-4 py-2">{rating.position}</td>
+                    <td className="border border-gray-300 px-2 md:px-4 py-2">
+                      {`${rating.nombre || "Desconocido"} ${rating.apellido || ""}`}
+                    </td>
+                    <td className="border border-gray-300 px-2 md:px-4 py-2">
                       {isNaN(parseFloat(rating.average_rating))
                         ? "0.00"
                         : parseFloat(rating.average_rating).toFixed(2)}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2">{rating.total_ratings || 0}</td>
+                    <td className="border border-gray-300 px-2 md:px-4 py-2">{rating.total_ratings || 0}</td>
                   </tr>
                 ))
               ) : (
@@ -141,4 +142,5 @@ export default function RatingsPage() {
       )}
     </div>
   );
+  
 }
