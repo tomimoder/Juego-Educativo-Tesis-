@@ -7,7 +7,6 @@ import axios from "axios"
 import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
 import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
-import SaveSolutionModal from "../Solution/SolutionFormModal"
 
 
 function GameInterface() {
@@ -28,16 +27,16 @@ function GameInterface() {
   const navigate = useNavigate()
   const messagesEndRef = useRef(null)
   const [isPiecesViable, setIsPiecesViable] = useState(true)
-  const [userSolution, setUserSolution] = useState([])
   const [figuraActual, setFiguraActual] = useState("null")
   const [isTimeUpPopupOpen, setIsTimeUpPopupOpen] = useState(false)
   const [hasSavedSolution, setHasSavedSolution] = useState(false);
   const [showSolutions, setShowSolutions] = useState(false);
   const [latestSolutions, setLatestSolutions] = useState([]);
   const [assignedPieces, setAssignedPieces] = useState([]);
-  const [isSaveSolutionModalOpen, setIsSaveSolutionModalOpen] = useState(false);
-  const [startTime, setStartTime] = useState(null); // Nuevo estado para tiempo de inicio
-  const [moveCount, setMoveCount] = useState(0);
+  const [userSolution, setUserSolution] = useState({
+    description: "",
+    solution: []
+  });
   
 
 
@@ -236,47 +235,6 @@ function GameInterface() {
     fetchUserAndUpdateLevel();
   }, [navigate, levelId]);
 
-  // Registrar inicio del nivel
-  useEffect(() => {
-    const logLevelStart = async () => {
-      try {
-        if (currentUser && levelId) {
-          await axios.post(
-            `${VITE_API_URL}/api/start-level`,
-            { userId: currentUser.id, levelId },
-            { withCredentials: true }
-          );
-          setStartTime(new Date());
-          console.log('✅ Inicio de nivel registrado');
-        }
-      } catch (error) {
-        console.error('Error registrando inicio de nivel:', error);
-      }
-    };
-
-    logLevelStart();
-  }, [currentUser, levelId]);
-
-  // Obtener conteo de movimientos (opcional, para mostrar en la UI)
-  const fetchMoveCount = async () => {
-    try {
-      const response = await axios.get(`${VITE_API_URL}/api/move-count`, {
-        params: { userId: currentUser.id, levelId },
-        withCredentials: true,
-      });
-      setMoveCount(response.data.moveCount);
-      console.log(`Movimientos: ${response.data.moveCount}`);
-    } catch (error) {
-      console.error('Error obteniendo conteo de movimientos:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser && levelId) {
-      fetchMoveCount();
-    }
-  }, [currentUser, levelId, userSolution]);
-
   useEffect(() => {
     if (currentUser) {
       const newSocket = initializeSocket()
@@ -341,43 +299,51 @@ function GameInterface() {
   };
 
 
-  const handleSaveSolution = async (description) => {
+  const handleSaveSolution = async () => {
     try {
       const user = await fetchUser();
       if (!user) {
-        throw new Error('Usuario no autenticado');
+        alert("Usuario no autenticado");
+        return;
       }
-
+  
+      const description = prompt("Por favor, añade una breve descripción de tu solución:");
+      if (!description || description.trim() === "") {
+        alert("Necesitas añadir una descripción");
+        return;
+      }
+  
+      // Guardamos todas las piezas de userSolution
       const allPieces = userSolution.map((piece) => ({
         shape: piece.shape,
         coordenadas: piece.coordenadas,
         orientacion: piece.orientacion,
         initialPosition: piece.initialPosition,
       }));
-
+  
       const response = await fetch(`${VITE_API_URL}/api/user-solution`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🔥 Asegurar que la cookie de sesión se envíe
         body: JSON.stringify({
-          userId: user.id,
+          userId: user.id, // Ahora se usa el `id` obtenido de la cookie
           levelId,
           solutionData: allPieces,
-          description,
-          startTime: startTime?.toISOString(), // Enviar tiempo de inicio
+          description: description.trim(),
         }),
       });
-
-      if (!response.ok) {
-        throw new Error('Error al guardar la solución');
+  
+      if (response.ok) {
+        alert("¡Solución guardada!");
+        setHasSavedSolution(true);
+        await fetchLatestSolutions();
+        await markLevelAsCompleted(); // Marcar nivel como completado después de guardar la solución
+      } else {
+        alert("Error al guardar la solución");
       }
-
-      setHasSavedSolution(true);
-      await fetchLatestSolutions();
-      await markLevelAsCompleted();
     } catch (error) {
-      console.error('❌ Error al guardar la solución:', error);
-      throw error;
+      console.error("❌ Error al guardar la solución:", error);
+      alert("Error al guardar la solución");
     }
   };
 
@@ -435,7 +401,9 @@ function GameInterface() {
           if (time - 1 <= 0) {
             clearInterval(timerId);
             setIsTimeUpPopupOpen(true);
-            setIsSaveSolutionModalOpen(true); // Abrir el modal para ingresar descripción
+            handleSaveSolution(); // Guardar solución
+            // Marcar nivel como completado
+            markLevelAsCompleted();
             return 0;
           }
           return time - 1;
@@ -458,13 +426,28 @@ function GameInterface() {
     if (socket) {
       socket.on("randomSolutionAssigned", (solutionData) => {
         console.log("📥 Solución aleatoria recibida:", solutionData);
-        setUserSolution({
-          ...solutionData,
-          description: solutionData.description || "No hay descripción disponible", // Asegúrate de que la descripción exista
+        if (!solutionData) {
+          console.error("❌ solutionData es null o undefined");
+          return;
+        }
+        const solution = Array.isArray(solutionData.solution) ? solutionData.solution : (Array.isArray(solutionData) ? solutionData : []);
+        console.log("📌 Solución procesada:", solution);
+        if (solution.length === 0) {
+          console.warn("❌ La solución está vacía");
+        }
+        solution.forEach((piece, index) => {
+          console.log(`Pieza ${index}:`, {
+            shape: piece.shape,
+            coordenadas: piece.coordenadas,
+            orientacion: piece.orientacion
+          });
         });
-        setIsFiguraSeleccionada(true);  
+        setUserSolution({
+          solution,
+          description: solutionData.description || "No hay descripción disponible",
+        });
+        setIsFiguraSeleccionada(true);
       });
-  
       return () => {
         socket.off("randomSolutionAssigned");
       };
@@ -535,64 +518,55 @@ function GameInterface() {
 
   const handlePieceMoved = (pieceId, position, rotation) => {
     if (!socket || !chatGroupId) {
-      console.error('❌ No se puede emitir el evento pieceMoved: faltan socket o chatGroupId');
-      return;
+        console.error("❌ No se puede emitir el evento pieceMoved: faltan socket o chatGroupId");
+        return;
     }
 
+    // Asegurar que rotation no sea undefined o NaN
     const validRotation = isNaN(rotation) || rotation === undefined ? 0 : rotation;
 
-    // Enviar a WebSocket (existente)
     console.log(`📤 Emitiendo movimiento: Pieza ${pieceId} a x:${position.x}, y:${position.y}, rotación: ${validRotation} en grupo ${chatGroupId}`);
-    socket.emit('pieceMoved', {
-      groupId: chatGroupId,
-      pieceId,
-      position: { x: position.x, y: position.y },
-      rotation: validRotation,
-    });
 
-    // Enviar al backend para registrar en logs
-    if (currentUser) {
-      axios
-        .post(
-          `${VITE_API_URL}/api/move-piece`,
-          {
-            userId: currentUser.id,
-            levelId,
-            pieceId,
-            position: { x: position.x, y: position.y },
-            rotation: validRotation,
-          },
-          { withCredentials: true }
-        )
-        .then(() => {
-          console.log('✅ Movimiento registrado en backend');
-          fetchMoveCount(); // Actualizar conteo
-        })
-        .catch((error) => {
-          console.error('Error registrando movimiento:', error);
-        });
-    }
-  };
+    socket.emit("pieceMoved", {
+        groupId: chatGroupId,
+        pieceId,
+        position: { x: position.x, y: position.y },
+        rotation: validRotation // 🔥 Ahora siempre será un número válido
+    });
+};
 
 
 
 useEffect(() => {
   if (socket) {
-    socket.on("pieceMoved", ({ pieceId, position }) => {
-      console.log(`🔄 Recibiendo movimiento de pieza ${pieceId} a x:${position.x}, y:${position.y}`);
-
-      setUserSolution(prevSolution =>
-        prevSolution.map(piece =>
-          piece.shape === pieceId ? { ...piece, coordenadas: [{ x: position.x, y: position.y }] } : piece
-        )
-      );
+    socket.on("pieceMoved", ({ pieceId, position, rotation }) => {
+      console.log(`🔄 Recibiendo movimiento de pieza ${pieceId} a x:${position.x}, y:${position.y}, rotation:${rotation}`);
+      setUserSolution(prevSolution => {
+        if (!prevSolution || !Array.isArray(prevSolution.solution)) {
+          console.warn("❗ prevSolution o prevSolution.solution no están definidos correctamente", prevSolution);
+          return {
+            solution: [],
+            description: prevSolution.description || "No hay descripción disponible",
+          };
+        }
+        return {
+          ...prevSolution,
+          solution: prevSolution.solution.map(piece =>
+            piece.shape === pieceId
+              ? { ...piece, coordenadas: [{ x: position.x, y: position.y }], orientacion: rotation || 0 }
+              : piece
+          ),
+        };
+      });
     });
-
     return () => {
       socket.off("pieceMoved");
     };
   }
 }, [socket]);
+
+
+
 
 
 
@@ -606,8 +580,11 @@ useEffect(() => {
 
 
   const updateUserSolution = (solution) => {
-    setUserSolution(solution)
-  }
+    setUserSolution(prevSolution => ({
+      solution: Array.isArray(solution) ? solution : prevSolution.solution,
+      description: prevSolution.description || "No hay descripción disponible",
+    }));
+  };
 
   const handleCloseTimeUpPopup = () => {
     setIsTimeUpPopupOpen(false)
@@ -619,10 +596,6 @@ useEffect(() => {
 
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
-      <div className="move-count p-2">
-        <span className="font-bold">Movimientos: {moveCount}</span>
-      </div>
-  
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
         <div className="timer flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -632,7 +605,7 @@ useEffect(() => {
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
           </span>
         </div>
-        <div className="level font-bold text-center">Nivel {levelData.level}</div>
+        <div className="level font-bold">Nivel {levelData.level}</div>
         <div className="coins flex items-center">
           <span className="font-bold mr-2">{levelData.stars}</span>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -641,22 +614,17 @@ useEffect(() => {
         </div>
       </div>
   
-      <div className="flex-grow flex flex-col lg:flex-row">
-        {/* Columna Principal */}
-        <div className="w-full lg:w-3/4 p-4 flex flex-col">
-          {/* Nivel 1: dos bloques lado a lado */}
+      <div className="flex-grow flex">
+        <div className="w-3/4 p-4 flex flex-col">
           {levelData.level === 1 ? (
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
-              <div className="bg-white rounded-lg shadow-lg p-4 w-full md:w-1/2 h-[300px] md:h-[550px]" />
-              <div className="w-full md:w-1/2">
-                <RandomBackgroundDiv />
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+              <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '650px' }}></div>
+              <RandomBackgroundDiv />
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-lg p-4 mb-4 h-[300px] md:h-[550px] w-full" />
+            <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '1400px' }}></div>
           )}
   
-          {/* Tablero Tangram */}
           <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
             {isPiecesViable && (
               <TangramBoard
@@ -665,64 +633,57 @@ useEffect(() => {
                 socket={socket}
                 piezasBloqueadas={figuraActual?.piezas || []}
                 nivelActual={levelData?.level}
-                solucionInicial={levelData?.level === 4 ? userSolution : []}
+                solucionInicial={levelData?.level === 4 ? (Array.isArray(userSolution.solution) ? userSolution.solution : []) : []}
                 piezasPermitidas={assignedPieces}
               />
             )}
           </div>
         </div>
   
-        {/* Sidebar */}
-        <div className="w-full lg:w-1/4 p-4 flex flex-col">
-          {/* Instrucciones */}
+        <div className="w-1/4 p-4 flex flex-col">
           <div className={`bg-green-200 rounded-lg p-4 mb-4 ${isInstructionsVisible ? '' : 'hidden'}`}>
             <h2 className="font-bold mb-2">Instrucciones</h2>
             <p>{levelData.instructions}</p>
           </div>
   
-          {/* Descripción */}
           <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
             <h2 className="font-bold mb-2">Descripción</h2>
             <p>{userSolution.description}</p>
           </div>
   
-          {/* Botones */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg flex-1">
+          <div className="flex justify-between mb-4">
+            <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg">
               {isInstructionsVisible ? 'Ocultar Instrucciones' : 'Mostrar Instrucciones'}
             </button>
             {levelData.level === 1 && (
-              <button onClick={togglePiecesViability} className="bg-yellow-500 text-white p-2 rounded-lg flex-1">
+              <button onClick={togglePiecesViability} className="bg-yellow-500 text-white p-2 rounded-lg">
                 {isPiecesViable ? 'Ocultar Piezas' : 'Mostrar Piezas'}
               </button>
             )}
             {!hasSavedSolution ? (
               <button
-                onClick={() => setIsSaveSolutionModalOpen(true)}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex-1"
+                onClick={handleSaveSolution}
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
               >
                 Guardar Solución
               </button>
             ) : (
               <button
                 onClick={handleViewSolutions}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex-1"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium"
               >
                 Ver Soluciones
               </button>
             )}
           </div>
   
-          {/* Chat Room */}
           {(levelData.level === 2 || levelData.level === 4) && (
             <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
               <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
                 {error ? (
                   <div className="text-center text-red-600">{error}</div>
                 ) : waitingForPartner ? (
-                  <div className="text-center text-red-600">
-                    No puedes enviar mensajes hasta que tu compañero se conecte.
-                  </div>
+                  <div className="text-center text-red-600">No puedes enviar mensajes hasta que tu compañero se conecte, cuando puedas mover las piezas por favor recarga la pagina para poder hablar.</div>
                 ) : (
                   <>
                     <div className="messages overflow-y-auto mb-4" style={{ maxHeight: '300px', minHeight: '300px' }}>
@@ -743,8 +704,14 @@ useEffect(() => {
                       })}
                       <div ref={messagesEndRef} />
                     </div>
-  
-                    <form onSubmit={handleSendMessage} className="relative">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (waitingForPartner) return; // Bloquea envío si sigue esperando
+                        handleSendMessage(e);
+                      }}
+                      className="relative"
+                    >
                       <input
                         type="text"
                         value={newMessage}
@@ -756,10 +723,25 @@ useEffect(() => {
                       <button
                         type="submit"
                         disabled={waitingForPartner}
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 ${waitingForPartner ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'}`}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 ${
+                          waitingForPartner ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'
+                        }`}
                       >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="transform rotate-90">
-                          <path d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <svg
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="transform rotate-90"
+                        >
+                          <path
+                            d="M12 2L2 22L22 12L12 2ZM12 2L10 22L22 12L12 2Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       </button>
                     </form>
@@ -771,10 +753,9 @@ useEffect(() => {
         </div>
       </div>
   
-      {/* Modales y Popups */}
       {showSolutions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white w-full h-full p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
+          <div className="bg-white w-[100vw] h-[100vh] p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
             <h3 className="text-xl font-bold mb-4">Últimas Soluciones</h3>
             <SolutionsList levelId={levelId} />
             <button
@@ -788,14 +769,8 @@ useEffect(() => {
       )}
   
       <TimeUpPopup isOpen={isTimeUpPopupOpen} onClose={handleCloseTimeUpPopup} />
-      <SaveSolutionModal
-        isOpen={isSaveSolutionModalOpen}
-        onClose={() => setIsSaveSolutionModalOpen(false)}
-        onSave={handleSaveSolution}
-      />
     </div>
   );
-  
 }  
 
 export default GameInterface
