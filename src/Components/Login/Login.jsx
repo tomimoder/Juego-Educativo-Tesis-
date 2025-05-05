@@ -73,22 +73,13 @@ export default function Login({ onLogin }) {
 
   const VITE_API_URL = "http://192.168.7.203:3001";
 
-  // Lista de cursos posibles (basada en la estructura de la tabla)
-  const availableCourses = [
-    '1° Basico A', '1° Basico B', '2° Basico A', '2° Basico B', '3° Basico A', '3° Basico B',
-    '4° Basico A', '4° Basico B', '5° Basico A', '5° Basico B', '6° Basico A', '6° Basico B',
-    '7° Basico A', '7° Basico B', '8° Basico A', '8° Basico B', 'I° Medio A', 'I° Medio B',
-    'II° Medio A', 'II° Medio B', 'III° Medio A', 'III° Medio B', 'IV° Medio A', 'IV° Medio B',
-  ];
-
   useEffect(() => {
     fetchSchools();
   }, []);
 
   useEffect(() => {
     if (selectedSchool) {
-      // Obtener cursos disponibles para el colegio (puedes ajustar esto según el backend)
-      setCourses(availableCourses); // Por ahora, usamos la lista estática
+      fetchCourses(selectedSchool);
       setSelectedCourse('');
       setStudents([]);
       setSelectedStudent('');
@@ -117,6 +108,19 @@ export default function Login({ onLogin }) {
     } catch (err) {
       console.error('Error fetching schools:', err);
       setError(`No se pudieron cargar los colegios. Intenta de nuevo.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCourses = async (schoolId) => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get(`${VITE_API_URL}/api/schools/${schoolId}/courses`);
+      setCourses(response.data);
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+      setError(`No se pudieron cargar los cursos. Intenta de nuevo.`);
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +165,7 @@ export default function Login({ onLogin }) {
           schoolId: selectedSchool,
           nombre: student.nombre,
           apellido: student.apellido,
-          nivel_curso: selectedCourse, // Incluimos el curso en el login
+          nivel_curso: selectedCourse,
         }),
       });
 

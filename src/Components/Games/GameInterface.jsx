@@ -8,6 +8,61 @@ import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
 import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
 
+const TuComponente = ({ currentLevel, isSameLevel, handleSaveSolution, hasSavedSolution, handleViewSolutions }) => {
+  const [showPartnerJoinedMsg, setShowPartnerJoinedMsg] = useState(false);
+
+  useEffect(() => {
+    console.log("isSameLevel:", isSameLevel);
+    console.log("currentLevel:", currentLevel);
+    if ([2, 4].includes(currentLevel)) {
+      if (isSameLevel) {
+        setShowPartnerJoinedMsg(true);
+        // Oculta el mensaje después de unos segundos
+        const timer = setTimeout(() => setShowPartnerJoinedMsg(false), 3000);
+        return () => clearTimeout(timer);
+      } else {
+        setShowPartnerJoinedMsg(false);
+      }
+    }
+  }, [isSameLevel, currentLevel]);
+
+  const isButtonDisabled = [2, 4].includes(currentLevel) && !isSameLevel;
+
+  return (
+    <div>
+      {([2, 4].includes(currentLevel) && !isSameLevel) && (
+        <p style={{ color: 'gray', marginTop: '8px' }}>
+          Esperando a tu compañero para continuar...
+        </p>
+      )}
+
+      {(!hasSavedSolution && (!isButtonDisabled || ![2, 4].includes(currentLevel))) && (
+        <button
+          onClick={handleSaveSolution}
+          disabled={isButtonDisabled}
+          className={`bg-blue-500 text-white p-2 rounded-lg ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+        >
+          Guardar Solución
+        </button>
+      )}
+
+      {hasSavedSolution && (
+        <button
+          onClick={handleViewSolutions}
+          className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
+        >
+          Ver Soluciones
+        </button>
+      )}
+
+      {showPartnerJoinedMsg && (
+        <p style={{ color: 'green', marginTop: '8px' }}>
+          Tu compañero ya entró. Ya puedes continuar!!.
+        </p>
+      )}
+    </div>
+  );
+};
 
 function GameInterface() {
   const [socket, setSocket] = useState(null)
@@ -37,12 +92,11 @@ function GameInterface() {
     description: "",
     solution: []
   });
-  
+  const [partnerLevel, setPartnerLevel] = useState(null);
+  const [isSameLevel, setIsSameLevel] = useState(true);
 
 
   const VITE_API_URL = "http://192.168.7.203:3001"
-
-
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)
 
@@ -53,7 +107,6 @@ function GameInterface() {
   useEffect(() => {
     if (messagesEndRef.current){
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-
     }
   }, [messages])
 
@@ -88,16 +141,12 @@ function GameInterface() {
 
   const [isFiguraSeleccionada, setIsFiguraSeleccionada] = useState(false)
 
-
-
   useEffect(() => {
     if (levelData?.level === 3 && !isFiguraSeleccionada) {
       const figuras = Object.keys(FIGURAS_NIVEL3)
-
       const figuraAleatoria = figuras[Math.floor(Math.random() * figuras.length)]
-
       setFiguraActual(FIGURAS_NIVEL3[figuraAleatoria])
-      setIsFiguraSeleccionada(true) // Marca como seleccionada
+      setIsFiguraSeleccionada(true)
     }
   }, [levelData, isFiguraSeleccionada])
 
@@ -132,7 +181,7 @@ function GameInterface() {
       console.log("Socket connected")
       if (currentUser) {
         console.log("Emitting joinChat event")
-        newSocket.emit("joinChat")
+        newSocket.emit("joinChat", { userId: currentUser.id, levelId })
       }
     })
 
@@ -150,6 +199,15 @@ function GameInterface() {
       console.log("Mensaje recibido:", message)
       setMessages((prevMessages) => [...prevMessages, message])
     })
+
+    newSocket.on("partnerLevelUpdate", ({ partnerLevel }) => {
+      console.log("📥 partnerLevelUpdate recibido:", {
+        partnerLevel,
+        levelDataLevel: levelData?.level,
+        isSameLevelBefore: isSameLevel,
+      });
+      setPartnerLevel(partnerLevel);
+    });
 
     newSocket.on("chatGroupJoined", ({ chatGroupId }) => {
       console.log("Unido al grupo de chat:", chatGroupId)
@@ -175,24 +233,20 @@ function GameInterface() {
     return newSocket
   }, [currentUser])
 
-
   useEffect(() => {
-  if (!socket) return;
+    if (!socket) return;
 
-  const handleGroupJoined = () => {
-    console.log("Compañero conectado — habilitando chat");
-    setWaitingForPartner(false);
-  };
+    const handleGroupJoined = () => {
+      console.log("Compañero conectado — habilitando chat");
+      setWaitingForPartner(false);
+    };
 
-  socket.on("chatGroupJoined", handleGroupJoined);
+    socket.on("chatGroupJoined", handleGroupJoined);
 
-  return () => {
-    socket.off("chatGroupJoined", handleGroupJoined);
-  };
-}, [socket]);
-
-  
-  
+    return () => {
+      socket.off("chatGroupJoined", handleGroupJoined);
+    };
+  }, [socket]);
 
   useEffect(() => {
     const fetchUserAndUpdateLevel = async () => {
@@ -201,40 +255,57 @@ function GameInterface() {
           method: "GET",
           credentials: "include",
         });
-
+  
         if (!response.ok) throw new Error("Usuario no autenticado");
-
+  
         const data = await response.json();
         if (!data.id) throw new Error("Usuario inválido en la cookie");
-
+  
         console.log("✅ Usuario obtenido desde el backend:", data);
-        setCurrentUser(data);
-
-        // Actualiza el current_level_id del usuario autenticado
-        const updateResponse = await fetch(`${VITE_API_URL}/api/update-user-level`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            levelId: levelId, // Solo enviamos el levelId
-          }),
+        setCurrentUser((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(data)) {
+            return data;
+          }
+          return prev;
         });
-
-        if (!updateResponse.ok) {
-          const errorData = await updateResponse.json();
-          console.error("❌ Error actualizando current_level_id:", errorData);
+  
+        // Verificar si el nivel necesita actualizarse
+        if (data.current_level_id !== levelId) {
+          const updateResponse = await fetch(`${VITE_API_URL}/api/update-user-level`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              levelId: levelId,
+            }),
+          });
+  
+          if (!updateResponse.ok) {
+            const errorData = await updateResponse.json();
+            console.error("❌ Error actualizando current_level_id:", errorData);
+          } else {
+            console.log(`✅ current_level_id actualizado para el usuario autenticado: ${levelId}`);
+            // Emitir updateUserLevel solo si la actualización fue exitosa
+            if (socket) {
+              console.log(`📤 Emitiendo updateUserLevel: userId=${data.id}, levelId=${levelId}`);
+              socket.emit("updateUserLevel", { userId: data.id, levelId });
+            } else {
+              console.warn("⚠️ Socket no está definido al intentar emitir updateUserLevel");
+            }
+          }
         } else {
-          console.log(`✅ current_level_id actualizado para el usuario autenticado: ${levelId}`);
+          console.log(`ℹ️ Nivel ya actualizado para el usuario ${data.id}: ${levelId}`);
         }
       } catch (err) {
         console.error("❌ Error obteniendo usuario o actualizando nivel:", err);
         navigate("/");
       }
     };
-
+  
     fetchUserAndUpdateLevel();
   }, [navigate, levelId]);
-
+  
+  
   useEffect(() => {
     if (currentUser) {
       const newSocket = initializeSocket()
@@ -248,6 +319,9 @@ function GameInterface() {
       }
     }
   }, [currentUser, initializeSocket])
+
+
+  
 
   useEffect(() => {
     if (socket && currentUser && !chatGroupId) {
@@ -279,11 +353,30 @@ function GameInterface() {
     }
   }, [levelId, location.state])
 
+  useEffect(() => {
+    if (levelData?.level && partnerLevel !== null && partnerLevel !== undefined) {
+      const parsedPartnerLevel = Number(partnerLevel); // Convertir partnerLevel a número
+      const isSame = levelData.level === parsedPartnerLevel;
+      console.log("🔍 Actualizando isSameLevel:", {
+        levelDataLevel: levelData.level,
+        partnerLevel,
+        parsedPartnerLevel,
+        isSame,
+      });
+      setIsSameLevel(isSame);
+    } else {
+      console.log("⚠️ No se actualiza isSameLevel:", {
+        levelDataLevel: levelData?.level,
+        partnerLevel,
+      });
+    }
+  }, [levelData, partnerLevel]);
+
   const fetchUser = async () => {
     try {
       const response = await fetch(`${VITE_API_URL}/api/me`, {
         method: "GET",
-        credentials: "include", // 🔥 Asegurar que la cookie se envíe con la petición
+        credentials: "include",
       });
   
       if (!response.ok) throw new Error("Usuario no autenticado");
@@ -297,7 +390,6 @@ function GameInterface() {
       return null;
     }
   };
-
 
   const handleSaveSolution = async () => {
     try {
@@ -313,8 +405,7 @@ function GameInterface() {
         return;
       }
   
-      // Guardamos todas las piezas de userSolution
-      const allPieces = userSolution.map((piece) => ({
+      const allPieces = userSolution.solution.map((piece) => ({
         shape: piece.shape,
         coordenadas: piece.coordenadas,
         orientacion: piece.orientacion,
@@ -324,9 +415,9 @@ function GameInterface() {
       const response = await fetch(`${VITE_API_URL}/api/user-solution`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // 🔥 Asegurar que la cookie de sesión se envíe
+        credentials: "include",
         body: JSON.stringify({
-          userId: user.id, // Ahora se usa el `id` obtenido de la cookie
+          userId: user.id,
           levelId,
           solutionData: allPieces,
           description: description.trim(),
@@ -337,7 +428,7 @@ function GameInterface() {
         alert("¡Solución guardada!");
         setHasSavedSolution(true);
         await fetchLatestSolutions();
-        await markLevelAsCompleted(); // Marcar nivel como completado después de guardar la solución
+        await markLevelAsCompleted();
       } else {
         alert("Error al guardar la solución");
       }
@@ -347,15 +438,12 @@ function GameInterface() {
     }
   };
 
-
   const handleViewSolutions = () =>{
     navigate(`/solutions/${levelId}`);
   }
 
-
   const fetchLatestSolutions = async () => {
     try {
-      // 🔹 Obtener y decodificar la cookie
       const userCookie = Cookies.get("userSession");
       console.log(userCookie);
       if (!userCookie) {
@@ -363,7 +451,7 @@ function GameInterface() {
         return;
       }
   
-      const user = JSON.parse(userCookie); // ✅ Parsear la cookie sin decodeURIComponent
+      const user = JSON.parse(userCookie);
       if (!user.id) {
         console.error("❌ Usuario inválido en la cookie");
         return;
@@ -371,10 +459,9 @@ function GameInterface() {
   
       console.log("✅ Usuario obtenido desde cookie:", user);
   
-      // 🔥 Hacer la petición al backend
       const response = await fetch(`${VITE_API_URL}/api/solutions/${levelId}?userId=${user.id}`, {
         method: "GET",
-        credentials: "include", // 🔥 Asegurar que la cookie se envíe
+        credentials: "include",
       });
   
       if (!response.ok) {
@@ -392,7 +479,6 @@ function GameInterface() {
       console.error("❌ Error al obtener las soluciones:", error);
     }
   };
-  
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -401,8 +487,7 @@ function GameInterface() {
           if (time - 1 <= 0) {
             clearInterval(timerId);
             setIsTimeUpPopupOpen(true);
-            handleSaveSolution(); // Guardar solución
-            // Marcar nivel como completado
+            handleSaveSolution();
             markLevelAsCompleted();
             return 0;
           }
@@ -413,14 +498,12 @@ function GameInterface() {
     }
   }, [timeLeft]);
 
-
   useEffect(() => {
     if (levelData?.level === 4 && socket && chatGroupId) {
       console.log(`📤 Solicitando solución destacada para el grupo ${chatGroupId}, nivel: ${levelId}`);
       socket.emit("requestRandomSolution", { groupId: chatGroupId, levelId });
     }
   }, [levelData, socket, chatGroupId, levelId]);
-  
 
   useEffect(() => {
     if (socket) {
@@ -439,7 +522,7 @@ function GameInterface() {
           console.log(`Pieza ${index}:`, {
             shape: piece.shape,
             coordenadas: piece.coordenadas,
-            orientacion: piece.orientacion
+            orientacion: piece.orientacion,
           });
         });
         setUserSolution({
@@ -453,7 +536,6 @@ function GameInterface() {
       };
     }
   }, [socket]);
-
 
   const markLevelAsCompleted = async () => {
     try {
@@ -485,8 +567,6 @@ function GameInterface() {
       alert("Error al completar el nivel. Intenta nuevamente.");
     }
   };
-  
-
 
   const handleSendMessage = (e) => {
     e.preventDefault()
@@ -511,73 +591,69 @@ function GameInterface() {
     setNewMessage("")
   }
 
-
   const toggleInstructions = () => setIsInstructionsVisible(!isInstructionsVisible)
   const toggleChat = () => setIsChatVisible(!isChatVisible)
   const handleInputChange = (e) => setUserInput(e.target.value)
 
+
   const handlePieceMoved = (pieceId, position, rotation) => {
     if (!socket || !chatGroupId) {
-        console.error("❌ No se puede emitir el evento pieceMoved: faltan socket o chatGroupId");
-        return;
+      console.error("❌ No se puede emitir el evento pieceMoved: faltan socket o chatGroupId");
+      return;
     }
 
-    // Asegurar que rotation no sea undefined o NaN
+    // Solo emitir pieceMoved si el nivel actual es 2 o 4
+    if (levelData?.level !== 2 && levelData?.level !== 4) {
+      console.log(`🚫 Movimiento de pieza bloqueado: Nivel actual (${levelData?.level}) no es 2 ni 4`);
+      setError("No puedes mover piezas en este nivel.");
+      return;
+    }
+
     const validRotation = isNaN(rotation) || rotation === undefined ? 0 : rotation;
 
     console.log(`📤 Emitiendo movimiento: Pieza ${pieceId} a x:${position.x}, y:${position.y}, rotación: ${validRotation} en grupo ${chatGroupId}`);
 
     socket.emit("pieceMoved", {
-        groupId: chatGroupId,
-        pieceId,
-        position: { x: position.x, y: position.y },
-        rotation: validRotation // 🔥 Ahora siempre será un número válido
+      groupId: chatGroupId,
+      pieceId,
+      position: { x: position.x, y: position.y },
+      rotation: validRotation
     });
-};
+  };
 
-
-
-useEffect(() => {
-  if (socket) {
-    socket.on("pieceMoved", ({ pieceId, position, rotation }) => {
-      console.log(`🔄 Recibiendo movimiento de pieza ${pieceId} a x:${position.x}, y:${position.y}, rotation:${rotation}`);
-      setUserSolution(prevSolution => {
-        if (!prevSolution || !Array.isArray(prevSolution.solution)) {
-          console.warn("❗ prevSolution o prevSolution.solution no están definidos correctamente", prevSolution);
+  useEffect(() => {
+    if (socket) {
+      socket.on("pieceMoved", ({ pieceId, position, rotation }) => {
+        console.log(`🔄 Recibiendo movimiento de pieza ${pieceId} a x:${position.x}, y:${position.y}, rotation:${rotation}`);
+        setUserSolution(prevSolution => {
+          if (!prevSolution || !Array.isArray(prevSolution.solution)) {
+            console.warn("❗ prevSolution o prevSolution.solution no están definidos correctamente", prevSolution);
+            return {
+              solution: [],
+              description: prevSolution.description || "No hay descripción disponible",
+            };
+          }
           return {
-            solution: [],
-            description: prevSolution.description || "No hay descripción disponible",
+            ...prevSolution,
+            solution: prevSolution.solution.map(piece =>
+              piece.shape === pieceId
+                ? { ...piece, coordenadas: [{ x: position.x, y: position.y }], orientacion: rotation || 0 }
+                : piece
+            ),
           };
-        }
-        return {
-          ...prevSolution,
-          solution: prevSolution.solution.map(piece =>
-            piece.shape === pieceId
-              ? { ...piece, coordenadas: [{ x: position.x, y: position.y }], orientacion: rotation || 0 }
-              : piece
-          ),
-        };
+        });
       });
-    });
-    return () => {
-      socket.off("pieceMoved");
-    };
-  }
-}, [socket]);
-
-
-
-
-
+      return () => {
+        socket.off("pieceMoved");
+      };
+    }
+  }, [socket]);
 
   const handleSubmit = (e) => {
     e.preventDefault()
     console.log("User input:", userInput)
     setUserInput("")
   }
-
-
-
 
   const updateUserSolution = (solution) => {
     setUserSolution(prevSolution => ({
@@ -596,6 +672,7 @@ useEffect(() => {
 
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
+      {/* Top Bar */}
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
         <div className="timer flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -614,18 +691,20 @@ useEffect(() => {
         </div>
       </div>
   
-      <div className="flex-grow flex">
-        <div className="w-3/4 p-4 flex flex-col">
+      {/* Main Content */}
+      <div className="flex-grow flex flex-col lg:flex-row">
+        {/* Left Side (Main Game Area) */}
+        <div className="w-full lg:w-3/4 p-2 lg:p-4 flex flex-col gap-4">
           {levelData.level === 1 ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '650px' }}></div>
-              <RandomBackgroundDiv />
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="bg-white rounded-lg shadow-lg p-4 h-[400px] md:h-[550px] w-full md:max-w-[650px]"></div>
+              <div className="flex-grow"><RandomBackgroundDiv /></div>
             </div>
           ) : (
-            <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4" style={{ height: '550px', width: '1400px' }}></div>
+            <div className="bg-white rounded-lg shadow-lg p-4 h-[400px] md:h-[550px] w-full md:max-w-[1400px]"></div>
           )}
   
-          <div className="flex-grow bg-white rounded-lg shadow-lg p-4 mb-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 flex-grow " style={{ overflow: 'visible' }}>
             {isPiecesViable && (
               <TangramBoard
                 updateSolution={updateUserSolution}
@@ -640,18 +719,21 @@ useEffect(() => {
           </div>
         </div>
   
-        <div className="w-1/4 p-4 flex flex-col">
-          <div className={`bg-green-200 rounded-lg p-4 mb-4 ${isInstructionsVisible ? '' : 'hidden'}`}>
+        {/* Right Side (Sidebar) */}
+        <div className="w-full lg:w-1/4 p-2 lg:p-4 flex flex-col gap-4">
+          <div className={`bg-green-200 rounded-lg p-4 ${isInstructionsVisible ? '' : 'hidden'}`}>
             <h2 className="font-bold mb-2">Instrucciones</h2>
             <p>{levelData.instructions}</p>
           </div>
   
-          <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
-            <h2 className="font-bold mb-2">Descripción</h2>
-            <p>{userSolution.description}</p>
-          </div>
-  
-          <div className="flex justify-between mb-4">
+          {levelData.level === 4 && (
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <h2 className="font-bold mb-2">Descripción</h2>
+              <p>{userSolution.description}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-2">
             <button onClick={toggleInstructions} className="bg-green-500 text-white p-2 rounded-lg">
               {isInstructionsVisible ? 'Ocultar Instrucciones' : 'Mostrar Instrucciones'}
             </button>
@@ -660,30 +742,22 @@ useEffect(() => {
                 {isPiecesViable ? 'Ocultar Piezas' : 'Mostrar Piezas'}
               </button>
             )}
-            {!hasSavedSolution ? (
-              <button
-                onClick={handleSaveSolution}
-                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                Guardar Solución
-              </button>
-            ) : (
-              <button
-                onClick={handleViewSolutions}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium"
-              >
-                Ver Soluciones
-              </button>
-            )}
+            <TuComponente
+            currentLevel={levelData.level}
+            isSameLevel={isSameLevel}
+            handleSaveSolution={handleSaveSolution}
+            hasSavedSolution={hasSavedSolution}
+            handleViewSolutions={handleViewSolutions}
+          />
           </div>
   
           {(levelData.level === 2 || levelData.level === 4) && (
             <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
-              <div className="chat-room bg-white rounded-lg p-4 shadow-lg h-full flex flex-col">
+              <div className="chat-room bg-white rounded-lg p-4 shadow-lg flex flex-col h-[300px] sm:h-[400px]">
                 {error ? (
                   <div className="text-center text-red-600">{error}</div>
                 ) : waitingForPartner ? (
-                  <div className="text-center text-red-600">No puedes enviar mensajes hasta que tu compañero se conecte, cuando puedas mover las piezas por favor recarga la pagina para poder hablar.</div>
+                  <div className="text-center text-red-600">No puedes enviar mensajes hasta que tu compañero se conecte, cuando puedas mover las piezas por favor recarga la página para poder hablar.</div>
                 ) : (
                   <>
                     <div className="messages overflow-y-auto mb-4" style={{ maxHeight: '300px', minHeight: '300px' }}>
@@ -707,7 +781,7 @@ useEffect(() => {
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        if (waitingForPartner) return; // Bloquea envío si sigue esperando
+                        if (waitingForPartner) return;
                         handleSendMessage(e);
                       }}
                       className="relative"
@@ -753,9 +827,10 @@ useEffect(() => {
         </div>
       </div>
   
+      {/* Modal de soluciones */}
       {showSolutions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white w-[100vw] h-[100vh] p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
+          <div className="bg-white w-full h-full max-w-full p-6 rounded-lg shadow-lg overflow-y-auto flex flex-col">
             <h3 className="text-xl font-bold mb-4">Últimas Soluciones</h3>
             <SolutionsList levelId={levelId} />
             <button

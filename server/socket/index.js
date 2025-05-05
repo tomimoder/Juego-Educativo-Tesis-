@@ -2,7 +2,7 @@
 const { Server } = require('socket.io');
 const pool = require('../database');
 const cookie = require('cookie');
-const { saveMessageInternal } = require('../controllers/messageController'); // Cambiar a saveMessageInternal
+const { saveMessageInternal } = require('../controllers/messageController');
 const shuffle = require('lodash.shuffle');
 
 let waitingUsers = [];
@@ -120,6 +120,19 @@ function initializeSocket(server) {
           const chatGroupId = existingGroup[0].chat_group_id;
           socket.join(`chatGroup_${chatGroupId}`);
           socket.emit('chatGroupJoined', { chatGroupId });
+
+           // Obtener el nivel del compañero
+          const [members] = await connection.query(`
+            SELECT user_id, current_level_id 
+            FROM users u
+            JOIN userchatgroups ucg ON u.id = ucg.user_id
+            WHERE ucg.chat_group_id = ?
+          `, [chatGroupId]);
+
+          const partner = members.find((m) => m.user_id !== user.id);
+          if (partner) {
+            socket.emit('partnerLevelUpdate', { partnerLevel: partner.current_level_id });
+          }
 
           if (!groups[chatGroupId]) {
             groups[chatGroupId] = {
@@ -258,6 +271,11 @@ function initializeSocket(server) {
           socket1.emit('chatGroupJoined', { chatGroupId });
           socket2.emit('chatGroupJoined', { chatGroupId });
 
+          // Obtener el nivel del compañero de cada uno
+          socket1.emit('partnerLevelUpdate', { partnerLevel: userNivelCurso }); // socket1 recibe nivel de user (el que recién se conectó)
+          socket2.emit('partnerLevelUpdate', { partnerLevel: waitingUser.nivel_curso }); // socket2 recibe nivel del que estaba esperando
+
+
           const piecesIds = shuffle([1, 2, 3, 4, 5, 6, 7]);
           const assignmentPlayer1 = piecesIds.slice(0, 4);
           const assignmentPlayer2 = piecesIds.slice(4);
@@ -291,10 +309,49 @@ function initializeSocket(server) {
     });
 
     // Evento para retransmitir piezas movidas
-    socket.on('pieceMoved', ({ groupId, pieceId, position, rotation }) => {
-      console.log(`📡 Servidor retransmitiendo: Pieza ${pieceId} en grupo ${groupId}`);
-      console.log(`📍 Posición recibida -> x: ${position?.x}, y: ${position?.y}, rotación: ${rotation}`);
-      socket.to(`chatGroup_${groupId}`).emit('pieceMoved', { pieceId, position, rotation });
+    socket.on('pieceMoved', async ({ groupId, pieceId, position, rotation }) => {
+      let connection;
+      try {
+        connection = await pool.getConnection();
+        // Obtener los niveles actuales de los usuarios en el grupo
+        const [groupUsers] = await connection.query(
+          `
+          SELECT u.id, u.current_level_id
+          FROM userchatgroups ucg
+          JOIN users u ON ucg.user_id = u.id
+          WHERE ucg.chat_group_id = ?
+        `,
+          [groupId]
+        );
+
+        // Verificar que hay dos usuarios y que ambos están en el nivel 2 o 4
+        if (groupUsers.length === 2) {
+          const [user1, user2] = groupUsers;
+          if (
+            user1.current_level_id === user2.current_level_id &&
+            (user1.current_level_id === 2 || user1.current_level_id === 4)
+          ) {
+            console.log(`📡 Servidor retransmitiendo: Pieza ${pieceId} en grupo ${groupId}`);
+            console.log(`📍 Posición recibida -> x: ${position?.x}, y: ${position?.y}, rotación: ${rotation}`);
+            socket.to(`chatGroup_${groupId}`).emit('pieceMoved', { pieceId, position, rotation });
+          } else {
+            console.log(
+              `🚫 Movimiento de pieza bloqueado: Los usuarios no están en el mismo nivel o no están en nivel 2 o 4 (user1: ${user1.current_level_id}, user2: ${user2.current_level_id})`
+            );
+            socket.emit('error', {
+              message: 'No puedes mover piezas porque los niveles no coinciden o no son 2 o 4.',
+            });
+          }
+        } else {
+          console.log(`🚫 Movimiento de pieza bloqueado: Grupo ${groupId} no tiene dos usuarios.`);
+          socket.emit('error', { message: 'No hay suficientes usuarios en el grupo para mover piezas.' });
+        }
+      } catch (error) {
+        console.error('❌ Error procesando movimiento de pieza:', error);
+        socket.emit('error', { message: 'Error procesando el movimiento de la pieza.' });
+      } finally {
+        if (connection) connection.release();
+      }
     });
 
     // Evento para enviar mensajes en el chat
@@ -368,6 +425,66 @@ function initializeSocket(server) {
       }
 
       console.log('Acción permitida: Las piezas ya están asignadas.');
+    });
+
+    socket.on('updateUserLevel', async ({ userId, levelId }) => {
+      let connection;
+      try {
+        connection = await pool.getConnection();
+    
+        // Convertir levelId a número
+        const numericLevelId = Number(levelId);
+    
+        // Actualizar el nivel del usuario en la base de datos
+        const [updateResult] = await connection.query(
+          `UPDATE users SET current_level_id = ? WHERE id = ?`,
+          [numericLevelId, userId]
+        );
+        console.log(`✅ Nivel actualizado para usuario ${userId}: ${numericLevelId}`, {
+          rowsAffected: updateResult.affectedRows,
+        });
+    
+        // Verificar que la actualización fue exitosa
+        if (updateResult.affectedRows === 0) {
+          throw new Error(`No se encontró usuario con id ${userId}`);
+        }
+    
+        // Obtener el grupo de chat del usuario
+        const [groupResult] = await connection.query(
+          `SELECT chat_group_id FROM userchatgroups WHERE user_id = ?`,
+          [userId]
+        );
+    
+        if (groupResult.length > 0) {
+          const chatGroupId = groupResult[0].chat_group_id;
+    
+          // Obtener los miembros del grupo
+          const [members] = await connection.query(
+            `SELECT user_id FROM userchatgroups WHERE chat_group_id = ? AND user_id != ?`,
+            [chatGroupId, userId]
+          );
+    
+          if (members.length > 0) {
+            const partnerId = members[0].user_id;
+            // Notificar al compañero con el nivel como número
+            io.to(`chatGroup_${chatGroupId}`).emit('partnerLevelUpdate', { partnerLevel: numericLevelId });
+            console.log(`📤 Notificando a grupo ${chatGroupId} que usuario ${userId} está en nivel ${numericLevelId}`);
+          }
+    
+          // Forzar actualización de grupos
+          await emitGroupsUpdate();
+          console.log(`🔄 Forzando actualización de grupos tras cambio de nivel para usuario ${userId}`);
+        }
+      } catch (error) {
+        console.error('❌ Error en updateUserLevel:', {
+          error: error.message,
+          userId,
+          levelId,
+        });
+        socket.emit('error', { message: `Error al actualizar el nivel: ${error.message}` });
+      } finally {
+        if (connection) connection.release();
+      }
     });
 
     socket.on('disconnect', async () => {

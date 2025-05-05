@@ -35,4 +35,24 @@ const getStudents = async (req, res) => {
   }
 };
 
-module.exports = { getSchools, getStudents };
+const getAvailableCourses = async (req, res) => {
+  const { schoolId } = req.params;
+
+  if (!schoolId) {
+    return res.status(400).json({ error: 'Falta el schoolId' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT DISTINCT nivel_curso FROM users WHERE school_id = ? AND nivel_curso IS NOT NULL',
+      [schoolId]
+    );
+    const courses = rows.map(row => row.nivel_curso);
+    res.json(courses);
+  } catch (error) {
+    console.error('Error fetching available courses:', error);
+    res.status(500).json({ error: 'Error fetching available courses', details: error.message });
+  }
+};
+
+module.exports = { getSchools, getStudents, getAvailableCourses };
