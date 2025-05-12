@@ -4,19 +4,16 @@ import TangramPiece from './TangramPiece';
 const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], piezasPermitidas = [] }) => {
   const [pieces, setPieces] = useState([]);
   const [selectedPieceId, setSelectedPieceId] = useState(null);
+  const [pieceOrder, setPieceOrder] = useState([]);
   const boardRef = useRef(null);
   const initializedRef = useRef(false);
-  const solutionAppliedRef = useRef(false);
   const isMobile = window.innerWidth < 768;
 
-  // Calcular posiciones iniciales una sola vez cuando el componente se monta
   useEffect(() => {
     if (boardRef.current && !initializedRef.current) {
       const boardWidth = boardRef.current.offsetWidth;
       const boardHeight = boardRef.current.offsetHeight;
-  
       console.log("📏 Dimensiones del tablero:", { boardWidth, boardHeight, isMobile });
-  
       const basePieces = isMobile
         ? [
             { id: 1, shape: 'large-triangle', initialPosition: { x: boardWidth * 0.05, y: boardHeight * 0.3 }, rotation: 0 },
@@ -36,28 +33,28 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
             { id: 6, shape: 'parallelogram', initialPosition: { x: boardWidth * 0.52, y: boardHeight * 0.3 }, rotation: 0 },
             { id: 7, shape: 'diamond', initialPosition: { x: boardWidth * 0.62, y: boardHeight * 0.3 }, rotation: 0 },
           ];
-  
+
       const initialPieces = basePieces.map((piece) => {
         const bloqueada = piezasBloqueadas.find((p) => p.id === piece.id);
         const initialPos = bloqueada
           ? { x: bloqueada.x, y: bloqueada.y }
           : piece.initialPosition;
-  
+
         return {
           ...piece,
           position: initialPos,
           rotation: bloqueada ? bloqueada.rotation || 0 : 0,
         };
       });
-  
+
       setPieces(initialPieces);
+      setPieceOrder(initialPieces.map((piece) => piece.id));
       initializedRef.current = true;
     }
   }, [piezasBloqueadas, isMobile]);
 
   const hasAppliedSolution = useRef(false);
 
-  
   useEffect(() => {
     if (nivelActual === 4 && Array.isArray(solucionInicial) && solucionInicial.length > 0 && !hasAppliedSolution.current) {
       console.log("📌 Aplicando solución inicial:", solucionInicial);
@@ -92,21 +89,16 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
       hasAppliedSolution.current = true;
     }
   }, [solucionInicial, nivelActual]);
-  
 
-  // Manejar el evento de redimensionamiento de la ventana
   useEffect(() => {
     const handleResize = () => {
       if (initializedRef.current) {
-        // En vez de recalcular todas las posiciones, solo ajustamos proporcionalmente
-        // la posición actual según las nuevas dimensiones del tablero
         if (boardRef.current) {
           const newWidth = boardRef.current.offsetWidth;
           const newHeight = boardRef.current.offsetHeight;
           
           setPieces(prevPieces => {
             return prevPieces.map(piece => {
-              // Mantener las posiciones actuales, no recalcular
               return piece;
             });
           });
@@ -118,7 +110,6 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Manejo de eventos de socket
   useEffect(() => {
     if (socket) {
       socket.on("pieceMoved", ({ pieceId, position, rotation }) => {
@@ -142,7 +133,6 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     }
   }, [socket, updateSolution]);
 
-  // Función auxiliar para actualizar la solución
   const updateSolutionFromPieces = (updatedPieces) => {
     const solution = updatedPieces.map(piece => ({
       shape: piece.shape,
@@ -153,25 +143,26 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     updateSolution(solution);
   };
 
-  // Limpiar selección al hacer clic fuera de una pieza
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (boardRef.current && boardRef.current.contains(e.target) && 
-          !e.target.closest('path') && !e.target.closest('button')) {
+      if (
+        boardRef.current &&
+        boardRef.current.contains(e.target) &&
+        !e.target.closest('select') &&
+        !e.target.closest('button') &&
+        !e.target.closest('svg') &&
+        !e.target.closest('.tangram-piece') &&
+        !e.target.closest('.rotate-button')
+      ) {
+        console.log("🔍 Deseleccionando pieza, selectedPieceId:", selectedPieceId);
         setSelectedPieceId(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
+    document.addEventListener('pointerdown', handleClickOutside);
+    return () => document.removeEventListener('pointerdown', handleClickOutside);
   }, []);
 
-  // Manejo de arrastre mejorado
   const handleDragStop = (id, newPosition) => {
     if (nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
   
@@ -198,44 +189,59 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
       updateSolutionFromPieces(updatedPieces);
       return updatedPieces;
     });
+
+    setPieceOrder(prevOrder => [
+      id,
+      ...prevOrder.filter(pieceId => pieceId !== id),
+    ]);
   };
 
-  // Manejo de selección mejorado
   const handleSelectPiece = (id) => {
-    setSelectedPieceId(prevSelected => (prevSelected === id ? null : id));
-    console.log(`Pieza ${id} seleccionada`);
+    console.log(`🔍 Pieza ${id} seleccionada`);
+    setSelectedPieceId(id);
+    if (id) {
+      setPieceOrder(prevOrder => [
+        id,
+        ...prevOrder.filter(pieceId => pieceId !== id),
+      ]);
+    }
   };
 
-  // Manejo de rotación mejorado
   const handleRotatePiece = (id, angle) => {
     if (nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
-
-    // Si no se proporciona ID, usar la pieza seleccionada
+  
     const pieceId = id || selectedPieceId;
     if (!pieceId) return;
-
+  
     setPieces(prevPieces => {
       const updatedPieces = prevPieces.map(piece =>
         piece.id === pieceId
-          ? { ...piece, rotation: (piece.rotation + angle) % 360 }
+          ? { ...piece, rotation: (piece.rotation + angle + 360) % 360 }
           : piece
       );
-
+  
       const rotatedPiece = updatedPieces.find(piece => piece.id === pieceId);
       const newRotation = rotatedPiece ? rotatedPiece.rotation : 0;
       const piecePosition = rotatedPiece ? rotatedPiece.position : { x: 0, y: 0 };
-
+  
       if (nivelActual === 2 || nivelActual === 4) {
         console.log(`📤 Emitiendo rotación: Pieza ${pieceId} a rotación ${newRotation}`);
         onPieceMoved(pieceId, piecePosition, newRotation);
       }
-
+  
       updateSolutionFromPieces(updatedPieces);
       return updatedPieces;
     });
+  
+    // 👇 Esta línea estaba mal antes (comparaba el mismo ID consigo mismo)
+    setPieceOrder(prevOrder => [
+      pieceId,
+      ...prevOrder.filter(id => id !== pieceId),
+    ]);
   };
+  
+  
 
-  // Determinar si una pieza es arrastrable
   const isPieceDraggable = (pieceId) => {
     switch (nivelActual) {
       case 1: 
@@ -250,7 +256,14 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     }
   };
 
+  const handleDropdownChange = (e) => {
+    const selectedId = e.target.value ? Number(e.target.value) : null;
+    console.log("🔍 Seleccionando pieza desde dropdown:", selectedId);
+    handleSelectPiece(selectedId);
+  };
+
   return (
+    
     <div ref={boardRef} className="tangram-board bg-white rounded-lg shadow-lg" 
       style={{
         width: '100%',
@@ -258,10 +271,9 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
         position: 'relative',
         minHeight: '30vh',
         overflow: 'visible',
-        touchAction: 'none' // Importante para eventos táctiles W
+        touchAction: 'none'
       }}
     >
-      {/* Instrucciones para el usuario */}
       <div style={{
         position: 'absolute',
         top: '10px',
@@ -274,39 +286,60 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
         textAlign: 'center',
         zIndex: 10,
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        pointerEvents: 'none'
+        pointerEvents: 'auto'
       }}>
-        {selectedPieceId 
-          ? "Arrastra para mover o usa los botones para rotar" 
-          : "Toca una pieza para seleccionarla"}
+        <select
+          value={selectedPieceId || ''}
+          onChange={handleDropdownChange}
+          style={{
+            width: '100%',
+            padding: '5px',
+            fontSize: isMobile ? '14px' : '12px',
+            borderRadius: '5px',
+            border: '1px solid #ccc',
+            backgroundColor: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="">Selecciona una pieza</option>
+          {pieces.map(piece => (
+            <option key={piece.id} value={piece.id}>
+              {piece.shape}
+            </option>
+          ))}
+        </select>
       </div>
+      
 
       <div className="solution-area" style={{
         width: '100%',
-        height: 'calc(100% - 80px)', // Ajustado para dar más espacio a los controles
+        height: 'calc(100% - 80px)',
         position: 'relative'
       }}>
-        {pieces.map(piece => (
-          <TangramPiece
-            key={`piece-${piece.id}`} // Clave estable
-            id={piece.id}
-            shape={piece.shape}
-            position={piece.position}
-            rotation={piece.rotation}
-            onDragStop={handleDragStop}
-            bloqueada={piezasBloqueadas.some(p => p.id === piece.id)}
-            draggable={isPieceDraggable(piece.id)}
-            assignedToMe={(nivelActual === 2 || nivelActual === 4) && piezasPermitidas.includes(piece.id)}
-            playerName={(nivelActual === 2 || nivelActual === 4) ? (piezasPermitidas.includes(piece.id) ? 'Tú' : 'Compañero') : ''}
-            nivelActual={nivelActual}
-            boardRef={boardRef}
-            isSelected={selectedPieceId === piece.id}
-            onSelect={handleSelectPiece}
-          />
-        ))}
+        {pieceOrder.map(pieceId => {
+          const piece = pieces.find(p => p.id === pieceId);
+          if (!piece) return null;
+          return (
+            <TangramPiece
+              key={`piece-${piece.id}`}
+              id={piece.id}
+              shape={piece.shape}
+              position={piece.position}
+              rotation={piece.rotation}
+              onDragStop={handleDragStop}
+              bloqueada={piezasBloqueadas.some(p => p.id === piece.id)}
+              draggable={isPieceDraggable(piece.id)}
+              assignedToMe={(nivelActual === 2 || nivelActual === 4) && piezasPermitidas.includes(piece.id)}
+              playerName={(nivelActual === 2 || nivelActual === 4) ? (piezasPermitidas.includes(piece.id) ? 'Tú' : 'Compañero') : ''}
+              nivelActual={nivelActual}
+              boardRef={boardRef}
+              isSelected={selectedPieceId === piece.id}
+              onSelect={handleSelectPiece}
+            />
+          );
+        })}
       </div>
 
-      {/* Controles de rotación optimizados para móviles */}
       <div style={{
         width: '100%',
         height: '80px',
@@ -320,10 +353,12 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        zIndex: 1000, 
+        pointerEvents: 'auto'
+
       }}>
         {selectedPieceId ? (
-          // Mostrar controles solo para la pieza seleccionada
           <div style={{
             display: 'flex',
             justifyContent: 'center',
@@ -331,7 +366,11 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
             width: '100%'
           }}>
             <button
-              onClick={() => handleRotatePiece(selectedPieceId, -15)}
+              className="rotate-button"
+              onClick={() => {
+                console.log("🖱️ Clic en botón de rotación izquierda, selectedPieceId:", selectedPieceId);
+                handleRotatePiece(selectedPieceId, -15);
+              }}
               style={{
                 padding: isMobile ? '12px 20px' : '8px 15px',
                 margin: '0 10px',
@@ -355,7 +394,11 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
               Rotar
             </div>
             <button
-              onClick={() => handleRotatePiece(selectedPieceId, 15)}
+              className="rotate-button"
+              onClick={() => {
+                console.log("🖱️ Clic en botón de rotación derecha, selectedPieceId:", selectedPieceId);
+                handleRotatePiece(selectedPieceId, 15);
+              }}
               style={{
                 padding: isMobile ? '12px 20px' : '8px 15px',
                 margin: '0 10px',
@@ -372,13 +415,12 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
             </button>
           </div>
         ) : (
-          // Mensaje cuando no hay pieza seleccionada
           <div style={{
             textAlign: 'center',
             color: '#666',
             fontSize: isMobile ? '16px' : '14px'
           }}>
-            Selecciona una pieza para rotarla
+            Selecciona una pieza desde el menú
           </div>
         )}
       </div>
