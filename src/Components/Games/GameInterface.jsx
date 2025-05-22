@@ -7,8 +7,9 @@ import axios from "axios"
 import TimeUpPopup from "../VentanaDesplegable/TimeUpPopup"
 import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
+import DescriptionModal from "../DescriptionModal/DescriptionModal"
 
-const TuComponente = ({ currentLevel, isSameLevel, handleSaveSolution, hasSavedSolution, handleViewSolutions }) => {
+const TuComponente = ({ currentLevel, isSameLevel, handleSaveSolution, hasSavedSolution, handleViewSolutions, setIsModalOpen }) => {
   const [showPartnerJoinedMsg, setShowPartnerJoinedMsg] = useState(false);
 
   useEffect(() => {
@@ -26,24 +27,25 @@ const TuComponente = ({ currentLevel, isSameLevel, handleSaveSolution, hasSavedS
     }
   }, [isSameLevel, currentLevel]);
 
-  const isButtonDisabled = [2, 4].includes(currentLevel) && !isSameLevel;
+  const isButtonDisabled = [5, 4].includes(currentLevel) && !isSameLevel;
 
   return (
     <div>
-      {([2, 4].includes(currentLevel) && !isSameLevel) && (
+      {([5, 4].includes(currentLevel) && !isSameLevel) && (
         <p style={{ color: 'gray', marginTop: '8px' }}>
           Esperando a tu compañero para continuar...
         </p>
       )}
 
-      {(!hasSavedSolution && (!isButtonDisabled || ![2, 4].includes(currentLevel))) && (
+      {(!hasSavedSolution && (!isButtonDisabled || ![5, 4].includes(currentLevel))) && (
         <button
-          onClick={handleSaveSolution}
+          onClick={() => setIsModalOpen(true)} 
           disabled={isButtonDisabled}
           className={`bg-blue-500 text-white p-2 rounded-lg ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
         >
           Guardar Solución
         </button>
+        
       )}
 
       {hasSavedSolution && (
@@ -94,6 +96,8 @@ function GameInterface() {
   });
   const [partnerLevel, setPartnerLevel] = useState(null);
   const [isSameLevel, setIsSameLevel] = useState(true);
+  const [levelStartTime, setLevelStartTime] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
 
   const VITE_API_URL = "http://192.168.7.203:3001"
@@ -142,7 +146,7 @@ function GameInterface() {
   const [isFiguraSeleccionada, setIsFiguraSeleccionada] = useState(false)
 
   useEffect(() => {
-    if (levelData?.level === 3 && !isFiguraSeleccionada) {
+    if (levelData?.level === 2 && !isFiguraSeleccionada) {
       const figuras = Object.keys(FIGURAS_NIVEL3)
       const figuraAleatoria = figuras[Math.floor(Math.random() * figuras.length)]
       setFiguraActual(FIGURAS_NIVEL3[figuraAleatoria])
@@ -161,6 +165,7 @@ function GameInterface() {
             setTimeLeft(response.data.time_limit)
             console.log(response.data.time_limit)
           }
+          setLevelStartTime(new Date().toISOString());
         }
       } catch (err) {
         console.error("Error fetching level data:", err)
@@ -391,20 +396,14 @@ function GameInterface() {
     }
   };
 
-  const handleSaveSolution = async () => {
+  const handleSaveSolution = async ({description, details}) => {
     try {
       const user = await fetchUser();
       if (!user) {
         alert("Usuario no autenticado");
         return;
       }
-  
-      const description = prompt("Por favor, añade una breve descripción de tu solución:");
-      if (!description || description.trim() === "") {
-        alert("Necesitas añadir una descripción");
-        return;
-      }
-  
+
       const allPieces = userSolution.solution.map((piece) => ({
         shape: piece.shape,
         coordenadas: piece.coordenadas,
@@ -421,6 +420,8 @@ function GameInterface() {
           levelId,
           solutionData: allPieces,
           description: description.trim(),
+          description_details: details.trim(),
+          startTime: levelStartTime || new Date().toISOString()
         }),
       });
   
@@ -430,7 +431,9 @@ function GameInterface() {
         await fetchLatestSolutions();
         await markLevelAsCompleted();
       } else {
-        alert("Error al guardar la solución");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Error del servidor:", errorData);
+        alert(`Error al guardar la solución: ${errorData.message || 'Error desconocido'}`);
       }
     } catch (error) {
       console.error("❌ Error al guardar la solución:", error);
@@ -441,6 +444,11 @@ function GameInterface() {
   const handleViewSolutions = () =>{
     navigate(`/solutions/${levelId}`);
   }
+
+  const handleModalSubmit = (data) => {
+    setIsModalOpen(false);
+    handleSaveSolution(data); // Aquí se ejecuta la lógica completa con los datos del modal
+  };
 
   const fetchLatestSolutions = async () => {
     try {
@@ -748,10 +756,11 @@ function GameInterface() {
             handleSaveSolution={handleSaveSolution}
             hasSavedSolution={hasSavedSolution}
             handleViewSolutions={handleViewSolutions}
+            setIsModalOpen={setIsModalOpen}
           />
           </div>
   
-          {(levelData.level === 2 || levelData.level === 4) && (
+          {(levelData.level === 5 || levelData.level === 4) && (
             <div className={`flex-grow ${isChatVisible ? '' : 'hidden'}`}>
               <div className="chat-room bg-white rounded-lg p-4 shadow-lg flex flex-col h-[300px] sm:h-[400px]">
                 {error ? (
@@ -842,7 +851,13 @@ function GameInterface() {
           </div>
         </div>
       )}
-  
+
+      <DescriptionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleModalSubmit}
+      />
+
       <TimeUpPopup isOpen={isTimeUpPopupOpen} onClose={handleCloseTimeUpPopup} />
     </div>
   );

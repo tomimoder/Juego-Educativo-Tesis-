@@ -19,12 +19,11 @@ const getSolution = async (req, res) => {
     }
 };
 
-// solutionController.js
 const saveUserSolution = async (req, res) => {
     try {
-      const { userId, levelId, solutionData, description, startTime } = req.body;
+      const { userId, levelId, solutionData, description, description_details, startTime } = req.body;
   
-      if (!userId || !levelId || !solutionData || !description || !startTime) {
+      if (!userId || !levelId || !solutionData || !description || !description_details || !startTime) {
         return res.status(400).json({ message: 'Faltan datos requeridos' });
       }
   
@@ -33,8 +32,8 @@ const saveUserSolution = async (req, res) => {
       const timeSpent = Math.round((end - start) / 1000); // Tiempo en segundos
   
       const [result] = await pool.query(
-        'INSERT INTO usertangramsolutions (user_id, level_id, solution_data, description) VALUES (?, ?, ?, ?)',
-        [userId, levelId, JSON.stringify(solutionData), description]
+        'INSERT INTO usertangramsolutions (user_id, level_id, solution_data, description, description_details) VALUES (?, ?, ?, ?, ?)',
+        [userId, levelId, JSON.stringify(solutionData), description, description_details]
       );
   
       // Registrar log
@@ -42,6 +41,7 @@ const saveUserSolution = async (req, res) => {
         levelId,
         solutionId: result.insertId,
         description,
+        description_details,
         timeSpent,
         timestamp: end.toISOString(),
       });
@@ -101,7 +101,6 @@ const getLatestSolutions = async (req, res) => {
 };
 
 
-// solutionController.js
 const rateSolution = async (req, res) => {
     const { solutionId, userId, rating, comment } = req.body;
   
@@ -290,14 +289,50 @@ const assignUsersToSolution = async (solutionId, authorUserId, numAssignments = 
             throw new Error('El autor no tiene un nivel de curso definido.');
         }
 
-        // Ahora seleccionar solo usuarios del mismo nivel_curso, estado "playing" y distintos al autor
+        // Obtener información de la solución para determinar si es colaborativa
+        const [solutionRows] = await pool.query('SELECT level_id FROM usertangramsolutions WHERE id = ?', [solutionId]);
+        const levelId = solutionRows[0]?.level_id;
+
+        if (!levelId) {
+            throw new Error('No se encontró información del nivel de la solución.');
+        }
+
+        // Determinar qué usuarios excluir
+        let excludedUserIds = [authorUserId]; // Siempre excluir al autor
+
+        // Si es un nivel colaborativo (4 o 5), excluir también al compañero
+        if (levelId === 4 || levelId === 5) {
+            const [partnerRows] = await pool.query(
+                `SELECT ucg2.user_id as partner_id
+                 FROM userchatgroups ucg1
+                 JOIN userchatgroups ucg2 ON ucg1.chat_group_id = ucg2.chat_group_id
+                 WHERE ucg1.user_id = ? AND ucg2.user_id != ?`,
+                [authorUserId, authorUserId]
+            );
+
+            if (partnerRows.length > 0) {
+                excludedUserIds.push(partnerRows[0].partner_id);
+                console.log(`🔒 Nivel colaborativo detectado. Excluyendo al autor ${authorUserId} y su compañero ${partnerRows[0].partner_id}`);
+            } else {
+                console.warn(`⚠️ No se encontró compañero para el usuario ${authorUserId} en nivel colaborativo ${levelId}`);
+            }
+        }
+
+        // Crear la condición de exclusión para la consulta
+        const excludePlaceholders = excludedUserIds.map(() => '?').join(',');
+        
+        // Seleccionar usuarios disponibles excluyendo a todos los usuarios de la pareja
         const [availableUsers] = await pool.query(
-            'SELECT id, nombre, apellido FROM users WHERE id != ? AND status = ? AND nivel_curso = ?',
-            [authorUserId, 'playing', authorNivelCurso]
+            `SELECT id, nombre, apellido 
+             FROM users 
+             WHERE id NOT IN (${excludePlaceholders}) 
+               AND status = ? 
+               AND nivel_curso = ?`,
+            [...excludedUserIds, 'playing', authorNivelCurso]
         );
 
         if (availableUsers.length === 0) {
-            throw new Error(`No hay usuarios en estado "playing" del nivel "${authorNivelCurso}" para asignar.`);
+            throw new Error(`No hay usuarios en estado "playing" del nivel "${authorNivelCurso}" disponibles para asignar (excluyendo ${levelId === 4 || levelId === 5 ? 'pareja colaborativa' : 'autor'}).`);
         }
 
         const assignmentsCount = Math.min(numAssignments, availableUsers.length);
@@ -311,7 +346,8 @@ const assignUsersToSolution = async (solutionId, authorUserId, numAssignments = 
             [assignments]
         );
 
-        console.log(`✅ Solución #${solutionId} asignada automáticamente a usuarios del curso ${authorNivelCurso}:`);
+        console.log(`✅ Solución #${solutionId} (Nivel ${levelId}) asignada automáticamente a usuarios del curso ${authorNivelCurso}:`);
+        console.log(`🔒 Usuarios excluidos: ${excludedUserIds.join(', ')} ${levelId === 4 || levelId === 5 ? '(pareja colaborativa)' : '(autor)'}`);
         selectedUsers.forEach(user => {
             console.log(`→ Usuario ID: ${user.id}, Nombre: ${user.nombre} ${user.apellido}`);
         });
@@ -433,7 +469,6 @@ const getMoveCount = async (req, res) => {
         res.status(500).json({ message: 'Error contando movimientos' });
     }
 };
-
 
 
 

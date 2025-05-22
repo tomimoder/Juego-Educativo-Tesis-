@@ -26,7 +26,7 @@ export default function RatingsPage() {
         }
 
         const userData = await userResponse.json();
-        setCurrentUserId(userData.id); // Usamos 'id' como devuelve /api/me
+        setCurrentUserId(userData.id); 
 
         // Obtener los ratings
         const ratingsResponse = await fetch(`${VITE_API_URL}/api/average-ratings`, {

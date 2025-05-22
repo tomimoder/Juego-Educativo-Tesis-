@@ -170,7 +170,7 @@ const TangramPiece = ({ shape, position, id, onDragStop, rotation = 0, bloqueada
           </g>
         </svg>
 
-        {(nivelActual === 2 || nivelActual === 4) && (
+        {(nivelActual === 5 || nivelActual === 4) && (
           <div
             style={{
               position: 'absolute',

@@ -164,7 +164,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
   }, []);
 
   const handleDragStop = (id, newPosition) => {
-    if (nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
+    if (nivelActual === 2 && piezasBloqueadas.some(p => p.id === id)) return;
   
     console.log(`📌 Pieza ${id} movida a`, newPosition);
   
@@ -181,7 +181,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
       const movedPiece = updatedPieces.find(piece => piece.id === id);
       const pieceRotation = movedPiece ? movedPiece.rotation : 0;
   
-      if (nivelActual === 2 || nivelActual === 4) {
+      if (nivelActual === 5 || nivelActual === 4) {
         console.log(`📤 Emitiendo movimiento: Pieza ${id} a x:${newPosition.x}, y:${newPosition.y}, rotación: ${pieceRotation}`);
         onPieceMoved(id, { x: newPosition.x, y: newPosition.y }, pieceRotation);
       }
@@ -208,7 +208,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
   };
 
   const handleRotatePiece = (id, angle) => {
-    if (nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
+    if (nivelActual === 2 && piezasBloqueadas.some(p => p.id === id)) return;
   
     const pieceId = id || selectedPieceId;
     if (!pieceId) return;
@@ -224,7 +224,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
       const newRotation = rotatedPiece ? rotatedPiece.rotation : 0;
       const piecePosition = rotatedPiece ? rotatedPiece.position : { x: 0, y: 0 };
   
-      if (nivelActual === 2 || nivelActual === 4) {
+      if (nivelActual === 5 || nivelActual === 4) {
         console.log(`📤 Emitiendo rotación: Pieza ${pieceId} a rotación ${newRotation}`);
         onPieceMoved(pieceId, piecePosition, newRotation);
       }
@@ -233,7 +233,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
       return updatedPieces;
     });
   
-    // 👇 Esta línea estaba mal antes (comparaba el mismo ID consigo mismo)
+    
     setPieceOrder(prevOrder => [
       pieceId,
       ...prevOrder.filter(id => id !== pieceId),
@@ -243,18 +243,20 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
   
 
   const isPieceDraggable = (pieceId) => {
-    switch (nivelActual) {
-      case 1: 
-        return true;
-      case 3:
-        return !piezasBloqueadas.some(p => p.id === pieceId);
-      case 2:
-      case 4:
-        return piezasPermitidas.includes(pieceId);
-      default:
-        return true;
-    }
-  };
+  switch (nivelActual) {
+    case 1:
+      return true;
+    case 2:
+      return !piezasBloqueadas.some(p => p.id === pieceId);
+    case 3:
+      return !piezasBloqueadas.some(p => p.id === pieceId);
+    case 4:
+      return piezasPermitidas.includes(pieceId);
+    default:
+      return true;
+  }
+};
+
 
   const handleDropdownChange = (e) => {
     const selectedId = e.target.value ? Number(e.target.value) : null;
@@ -329,8 +331,8 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
               onDragStop={handleDragStop}
               bloqueada={piezasBloqueadas.some(p => p.id === piece.id)}
               draggable={isPieceDraggable(piece.id)}
-              assignedToMe={(nivelActual === 2 || nivelActual === 4) && piezasPermitidas.includes(piece.id)}
-              playerName={(nivelActual === 2 || nivelActual === 4) ? (piezasPermitidas.includes(piece.id) ? 'Tú' : 'Compañero') : ''}
+              assignedToMe={(nivelActual === 5 || nivelActual === 4) && piezasPermitidas.includes(piece.id)}
+              playerName={(nivelActual === 5 || nivelActual === 4) ? (piezasPermitidas.includes(piece.id) ? 'Tú' : 'Compañero') : ''}
               nivelActual={nivelActual}
               boardRef={boardRef}
               isSelected={selectedPieceId === piece.id}

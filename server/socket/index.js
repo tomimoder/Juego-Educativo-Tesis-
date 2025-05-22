@@ -329,7 +329,7 @@ function initializeSocket(server) {
           const [user1, user2] = groupUsers;
           if (
             user1.current_level_id === user2.current_level_id &&
-            (user1.current_level_id === 2 || user1.current_level_id === 4)
+            (user1.current_level_id === 5 || user1.current_level_id === 4)
           ) {
             console.log(`📡 Servidor retransmitiendo: Pieza ${pieceId} en grupo ${groupId}`);
             console.log(`📍 Posición recibida -> x: ${position?.x}, y: ${position?.y}, rotación: ${rotation}`);
