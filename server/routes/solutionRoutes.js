@@ -13,6 +13,7 @@ const {
     logPieceMovement,
     logLevelStart,
     getMoveCount,
+    saveAlternativeSelection,
   } = require('../controllers/solutionController');
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.get('/assigned-solutions/:levelId/:userId', getAssignedSolutions);
 router.post('/move-piece', logPieceMovement);
 router.post('/start-level', logLevelStart);
 router.get('/move-count', getMoveCount);
+router.post('/solutions/alternative', saveAlternativeSelection);
 
 
 

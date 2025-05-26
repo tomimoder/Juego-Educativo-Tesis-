@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@google/genai": "^1.0.1",
+    "@google/generative-ai": "^0.24.1",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -10,6 +12,7 @@
     "axios": "^0.27.2",
     "cors": "^2.8.5",
     "csv-parser": "^3.0.0",
+    "dotenv": "^16.5.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.453.0",
     "mysql2": "^3.11.3",
@@ -67,5 +70,10 @@
     "url": "^0.11.4",
     "util": "^0.12.5",
     "webpack-node-externals": "^3.0.0"
-  }
+  },
+  "description": "**Primero entras a:**\r cd Magister-main\r **Ejecutas:**\r npm install\r npm start o npm run dev",
+  "main": "config-overrides.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

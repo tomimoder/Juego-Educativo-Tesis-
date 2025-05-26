@@ -11,7 +11,7 @@ const levelRoutes = require('./routes/levelRoutes');
 const solutionRoutes = require('./routes/solutionRoutes');
 const WaitingUsersRoutes = require('./routes/NewadminRoutes'); // Importa la nueva ruta de usuarios en espera
 const messageRoutes = require('./routes/messageRoutes'); // Importa la nueva ruta de mensajes 
-
+const geminiRoutes = require("./routes/geminiRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -50,6 +50,8 @@ app.use('/api/levels', levelRoutes);
 app.use('/api', solutionRoutes);
 app.use('/api', WaitingUsersRoutes); // Usa la nueva ruta de usuarios en espera
 app.use('/api', messageRoutes);
+app.use("/api/gemini", geminiRoutes);
+app.use('/api/alternative', require('./routes/alternativeRoutes'));
 
 
 app.get("/api/me", (req, res) => {

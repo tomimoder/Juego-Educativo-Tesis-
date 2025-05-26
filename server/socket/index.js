@@ -379,18 +379,18 @@ function initializeSocket(server) {
 
         const [solutions] = await connection.query(
           `
-          SELECT uts.solution_data, uts.description
+          SELECT uts.solution_data, 
+                 uts.description,
+                 (SELECT word 
+                  FROM solution_alternative_votes sav 
+                  WHERE sav.solution_id = uts.id 
+                  GROUP BY sav.word 
+                  ORDER BY COUNT(*) DESC 
+                  LIMIT 1) AS most_voted_alternative
           FROM usertangramsolutions uts
-          INNER JOIN (
-            SELECT user_id, level_id, MAX(average_rating) AS max_rating
-            FROM usertangramsolutions
-            WHERE level_id < ?
-            GROUP BY user_id, level_id
-          ) best ON uts.user_id = best.user_id 
-                 AND uts.level_id = best.level_id
-                 AND uts.average_rating = best.max_rating
+          WHERE uts.level_id = ?
           ORDER BY uts.average_rating DESC, uts.total_ratings DESC
-          LIMIT 5
+          LIMIT 1
           `,
           [levelId]
         );
@@ -398,14 +398,18 @@ function initializeSocket(server) {
         connection.release();
 
         if (solutions.length > 0) {
-          const randomIndex = Math.floor(Math.random() * solutions.length);
-          const selectedSolution = solutions[randomIndex].solution_data;
-          const description = solutions[randomIndex].description;
+          const selectedSolution = solutions[0];
+          const solutionData = selectedSolution.solution_data;
+          const description = selectedSolution.most_voted_alternative || selectedSolution.description;
 
-          groupSolutions[groupId] = { solution: selectedSolution, description };
+          groupSolutions[groupId] = { solution: solutionData, description };
 
-          console.log(`📡 Asignando nueva solución destacada al grupo ${groupId}:`, selectedSolution);
-          io.to(`chatGroup_${groupId}`).emit('randomSolutionAssigned', { solution: selectedSolution, description });
+          console.log(`📡 Asignando nueva solución destacada al grupo ${groupId}:`, solutionData);
+          console.log(`🔍 Solución seleccionada:`, selectedSolution);
+          console.log(`🆔 ID de la solución: ${selectedSolution.id}`);
+          console.log(`📝 Descripción de la solución: ${selectedSolution.description}`);
+
+          io.to(`chatGroup_${groupId}`).emit('randomSolutionAssigned', { solution: solutionData, description });
         } else {
           console.warn('⚠️ No se encontraron soluciones destacadas disponibles');
           io.to(`chatGroup_${groupId}`).emit('randomSolutionAssigned', { solution: [], description: '' });

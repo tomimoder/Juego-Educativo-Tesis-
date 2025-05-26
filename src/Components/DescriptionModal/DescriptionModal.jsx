@@ -31,7 +31,7 @@ const DescriptionModal = ({ isOpen, onClose, onSubmit }) => {
       <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4">Describe tu solución</h2>
 
-        <label className="block mb-2">Descripción breve:</label>
+        <label className="block mb-2">Añade una descripción breve de una sola palabra o máximo dos:</label>
         <input
           type="text"
           className="w-full p-2 border border-gray-300 rounded mb-4"

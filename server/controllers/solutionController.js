@@ -470,6 +470,35 @@ const getMoveCount = async (req, res) => {
     }
 };
 
+const saveAlternativeSelection = async (req, res) => {
+  const { solutionId, selectedWord, userId } = req.body;
+
+  if (!solutionId || !selectedWord) {
+    return res.status(400).json({ message: "Faltan datos" });
+  }
+
+  try {
+    await pool.query(`
+      INSERT INTO solution_alternatives (solution_id, word, selected_count)
+      VALUES (?, ?, 1)
+      ON DUPLICATE KEY UPDATE selected_count = selected_count + 1
+    `, [solutionId, selectedWord]);
+
+    // Log para auditoría
+    await logAction(userId, 'SELECT_ALTERNATIVE', {
+      solutionId,
+      selectedWord,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.status(200).json({ message: 'Alternativa registrada correctamente' });
+  } catch (error) {
+    console.error('❌ Error guardando alternativa:', error);
+    res.status(500).json({ message: 'Error guardando alternativa' });
+  }
+};
+
+
 
 
 
@@ -489,5 +518,6 @@ module.exports = {
     logAction,
     logPieceMovement,
     logLevelStart,
-    getMoveCount
+    getMoveCount,
+    saveAlternativeSelection
 }

@@ -101,13 +101,13 @@ export default function RatingsPage() {
         <div className="text-red-500">No se encontró el usuario en el ranking</div>
       ) : (
         <div className="overflow-x-auto w-full max-w-4xl">
-          <table className="w-full border-collapse border border-gray-300 bg-white text-sm md:text-base">
+          <table className="w-full border-collapse border border-gray-300 bg-gradient-to-r from-green-50 to-purple-100 text-sm md:text-base shadow-lg rounded-xl">
             <thead>
-              <tr className="bg-gray-200">
-                <th className="border border-gray-300 px-2 md:px-4 py-2">Posición</th>
-                <th className="border border-gray-300 px-2 md:px-4 py-2">Usuario</th>
-                <th className="border border-gray-300 px-2 md:px-4 py-2">Rating Promedio</th>
-                <th className="border border-gray-300 px-2 md:px-4 py-2">Total Calificaciones</th>
+              <tr className="bg-green-500 text-white">
+                <th className="border border-gray-300 px-4 py-3 font-semibold">Posición</th>
+                <th className="border border-gray-300 px-4 py-3 font-semibold">Usuario</th>
+                <th className="border border-gray-300 px-4 py-3 font-semibold">Rating Promedio</th>
+                <th className="border border-gray-300 px-4 py-3 font-semibold">Total Calificaciones</th>
               </tr>
             </thead>
             <tbody>
@@ -115,23 +115,23 @@ export default function RatingsPage() {
                 displayRatings.map((rating) => (
                   <tr
                     key={rating.user_id}
-                    className={`text-center ${rating.user_id === currentUserId ? "bg-yellow-100" : ""}`}
+                    className={`text-center ${rating.user_id === currentUserId ? "bg-purple-200 font-bold" : "hover:bg-green-200"}`}
                   >
-                    <td className="border border-gray-300 px-2 md:px-4 py-2">{rating.position}</td>
-                    <td className="border border-gray-300 px-2 md:px-4 py-2">
+                    <td className="border border-gray-300 px-4 py-3">{rating.position}</td>
+                    <td className="border border-gray-300 px-4 py-3">
                       {`${rating.nombre || "Desconocido"} ${rating.apellido || ""}`}
                     </td>
-                    <td className="border border-gray-300 px-2 md:px-4 py-2">
+                    <td className="border border-gray-300 px-4 py-3">
                       {isNaN(parseFloat(rating.average_rating))
                         ? "0.00"
                         : parseFloat(rating.average_rating).toFixed(2)}
                     </td>
-                    <td className="border border-gray-300 px-2 md:px-4 py-2">{rating.total_ratings || 0}</td>
+                    <td className="border border-gray-300 px-4 py-3">{rating.total_ratings || 0}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="border border-gray-300 px-4 py-2 text-center">
+                  <td colSpan="4" className="border border-gray-300 px-4 py-3 text-center text-gray-500">
                     No hay calificaciones disponibles
                   </td>
                 </tr>

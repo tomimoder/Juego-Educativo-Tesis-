@@ -31,19 +31,19 @@ const fetchUser = async () => {
 const getPieceAttributesFull = (shape, id) => {
   switch (shape) {
     case 'large-triangle':
-      return { svgPath: "M 0 0 L 140 0 L 70 70 Z", fillColor: "#FFA500", width: 140, height: 140, centerPoint: "70,23.33"};
+      return { svgPath: "M 0 0 L 140 0 L 70 70 Z", fillColor: "#FFA500", width: 140, height: 140, centerPoint: "70,23.33" };
     case 'large-triangle2':
-      return { svgPath: "M 0 0 L 140 0 L 70 70 Z", fillColor: "#7FFFD4", width: 140, height: 140, centerPoint: "70,23.33"};
+      return { svgPath: "M 0 0 L 140 0 L 70 70 Z", fillColor: "#7FFFD4", width: 140, height: 140, centerPoint: "70,23.33" };
     case 'medium-triangle':
-      return { svgPath: "M 0 0 L 100 0 L 50 50 Z", fillColor: "#FFD700", width: 100, height: 100, centerPoint: "50,16.67"};
+      return { svgPath: "M 0 0 L 100 0 L 50 50 Z", fillColor: "#FFD700", width: 100, height: 100, centerPoint: "50,16.67" };
     case 'small-triangle':
-      return { svgPath: "M 0 0 L 70 0 L 35 35 Z", fillColor: id === 4 ? "#00BFFF" : "#32CD32", width: 70, height: 70, centerPoint: "35,11.67"};
+      return { svgPath: "M 0 0 L 70 0 L 35 35 Z", fillColor: id === 4 ? "#00BFFF" : "#32CD32", width: 70, height: 70, centerPoint: "35,11.67" };
     case 'diamond':
-      return { svgPath: "M 0 35 L 35 0 L 70 35 L 35 70 Z", fillColor: "#FF0000", width: 70, height: 70, centerPoint: "35,35"};
+      return { svgPath: "M 0 35 L 35 0 L 70 35 L 35 70 Z", fillColor: "#FF0000", width: 70, height: 70, centerPoint: "35,35" };
     case 'parallelogram':
-      return { svgPath: "M 90 25 H 25 L 0 50 L 65 50 Z", fillColor: "#0000FF", width: 90, height: 50, centerPoint: "45,37.5"};
+      return { svgPath: "M 90 25 H 25 L 0 50 L 65 50 Z", fillColor: "#0000FF", width: 90, height: 50, centerPoint: "45,37.5" };
     default:
-      return { svgPath: "", fillColor: "gray", width: 50, height: 50, centerPoint: "25,25"};
+      return { svgPath: "", fillColor: "gray", width: 50, height: 50, centerPoint: "25,25" };
   }
 };
 
@@ -60,6 +60,8 @@ const SolutionsPage = ({
   const [comment, setComment] = useState('');
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [similarWords, setSimilarWords] = useState([]);
+  const [hasVoted, setHasVoted] = useState(false);
   const VITE_API_URL = "http://192.168.7.203:3001"
 
 
@@ -127,17 +129,17 @@ const SolutionsPage = ({
           setIsLoading(false);
           return;
         }
-    
+
         const response = await fetch(`${VITE_API_URL}/api/assigned-solutions/${levelId}/${user.id}`, {
           method: "GET",
           credentials: "include",
         });
-    
+
         if (!response.ok) {
           setSolutions([]);
           return;
         }
-    
+
         const data = await response.json();
         console.log("📌 Soluciones obtenidas:", data);
         setSolutions(data.solutions.length > 0 ? data.solutions : []);
@@ -147,7 +149,7 @@ const SolutionsPage = ({
         setIsLoading(false);
       }
     };
-    
+
 
     if (levelId) {
       fetchLatestSolutions();
@@ -157,6 +159,7 @@ const SolutionsPage = ({
   useEffect(() => {
     if (selectedSolution) {
       checkUserRating(selectedSolution.id);
+      fetchSimilarWords(selectedSolution.description);
     }
   }, [selectedSolution, currentUser]);
 
@@ -204,6 +207,62 @@ const SolutionsPage = ({
     }
   };
 
+  const fetchSimilarWords = async (description) => {
+    try {
+      const response = await fetch(`${VITE_API_URL}/api/gemini/similar-words`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ description })
+      });
+
+
+      if (!response.ok) throw new Error("Error al obtener palabras similares");
+
+
+
+      const data = await response.json();
+      console.log("📌 Palabras similares obtenidas:", data);
+      setSimilarWords(data.words);
+    } catch (error) {
+      console.error("❌ Error obteniendo palabras similares:", error);
+      setSimilarWords([]);
+    }
+  };
+
+  const handleAlternativeClick = async (word) => {
+    try {
+      const response = await fetch(`${VITE_API_URL}/api/alternative/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          solutionId: selectedSolution.id,
+          userId: currentUser.id,
+          word
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Error al votar');
+      }
+
+      setHasVoted(true); // bloquear más votos
+
+    } catch (error) {
+      console.error('❌ Error votando por alternativa:', error);
+      alert(error.message);
+    }
+  };
+
+
+  const options = selectedSolution?.description
+    ? [selectedSolution.description, ...similarWords]
+    : similarWords;
+
+
+
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
@@ -215,7 +274,7 @@ const SolutionsPage = ({
           ← Volver
         </button>
       </div>
-  
+
       <div className="flex-grow flex flex-col lg:flex-row">
         {!selectedSolution && (
           <div className="w-full lg:w-1/4 p-4 flex flex-col">
@@ -239,116 +298,148 @@ const SolutionsPage = ({
             </div>
           </div>
         )}
-  
+
         <div className={selectedSolution ? "w-full p-4 flex flex-col items-center" : "w-full lg:w-3/4 p-4 flex flex-col items-center"}>
           {selectedSolution && (
-            <div className="w-full bg-gray-100 p-4 rounded-lg mb-4 shadow-lg flex flex-col md:flex-row md:justify-between md:items-center">
-              <div className="mb-2 md:mb-0">
-                <p className="mb-2 font-semibold">{selectedSolution.description}</p>
-                <p className="text-sm text-gray-600">
-                  Calificación promedio: {formatRating(selectedSolution.average_rating)} (
-                  {selectedSolution.total_ratings || 0} calificaciones)
-                </p>
+            <div className="w-full max-w-[1400px] mx-auto flex flex-col md:flex-row md:justify-between md:items-center mb-4">
+              <div className="flex-1 flex items-center justify-center md:justify-start">
+                <div className="bg-white shadow-lg rounded-xl px-6 py-4 flex items-center gap-4 border-2 border-yellow-300">
+                  <span className="text-4xl text-yellow-400 font-bold flex items-center">
+                    ★
+                    <span className="ml-2 text-3xl text-gray-800">{formatRating(selectedSolution.average_rating)}</span>
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-lg font-semibold text-gray-700">Calificación promedio</span>
+                    <span className="text-sm text-gray-500">{selectedSolution.total_ratings || 0} calificaciones</span>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedSolution(null)}
-                className="bg-red-400 hover:bg-red-500 text-white px-3 py-1 rounded-lg"
+                className="mt-4 md:mt-0 bg-red-400 hover:bg-red-500 text-white px-3 py-2 rounded-lg font-semibold shadow"
               >
                 Volver a la lista
               </button>
             </div>
           )}
-  
-          {/* Contenedor de Solución */}
-          <div className="flex-grow bg-white rounded-lg shadow-lg overflow-hidden relative w-full max-w-[1400px] h-[300px] md:h-[550px]">
-            {selectedSolution ? (
-              <>
-                <p className="text-lg font-bold mb-4 text-center mt-2">Solución</p>
-                {(() => {
-                  const rawPieces = selectedSolution.solution_data;
-                  const validPieces = rawPieces.filter(
-                    (p) => p && p.shape && Array.isArray(p.coordenadas) && p.coordenadas[0]
-                  );
-                  const coords = validPieces.map(p => p.coordenadas[0]);
-                  const minX = Math.min(...coords.map(c => c.x));
-                  const maxX = Math.max(...coords.map(c => c.x));
-                  const minY = Math.min(...coords.map(c => c.y));
-                  const maxY = Math.max(...coords.map(c => c.y));
-  
-                  const boundingWidth = maxX - minX;
-                  const boundingHeight = maxY - minY;
-  
-                  const containerWidth = 1400;
-                  const containerHeight = 550;
-  
-                  const offsetX = containerWidth / 2 - (minX + boundingWidth / 2);
-                  const offsetY = containerHeight / 2 - (minY + boundingHeight / 2);
-  
-                  return validPieces.map((piece, index) => {
-                    const { svgPath, fillColor, width, height, centerPoint } = getPieceAttributesFull(piece.shape, index);
-                    const [centerX, centerY] = centerPoint.split(',').map(Number);
-  
-                    const posX = piece.coordenadas[0].x + offsetX;
-                    const posY = piece.coordenadas[0].y + offsetY;
-  
-                    return (
-                      <svg
-                        key={index}
-                        width="120"
-                        height="120"
-                        viewBox="-10 -10 100 100"
-                        style={{
-                          position: "absolute",
-                          left: `${posX}px`,
-                          top: `${posY}px`,
-                          overflow: 'visible',
-                        }}
-                      >
-                        <g transform={`rotate(${piece.orientacion || 0} ${centerX} ${centerY})`}>
-                          <path d={svgPath} fill={fillColor} stroke="black" strokeWidth="2" />
-                        </g>
-                      </svg>
+
+          <div className="w-full max-w-[1400px] mx-auto">
+            {/* Contenedor de Solución */}
+            <div className="flex-grow bg-white rounded-lg shadow-lg overflow-hidden relative w-full h-[300px] md:h-[550px]">
+              {selectedSolution ? (
+                <>
+                  <p className="text-lg font-bold mb-4 text-center mt-2">Solución</p>
+                  {(() => {
+                    const rawPieces = selectedSolution.solution_data;
+                    const validPieces = rawPieces.filter(
+                      (p) => p && p.shape && Array.isArray(p.coordenadas) && p.coordenadas[0]
                     );
-                  });
-                })()}
-              </>
-            ) : (
-              <p className="text-center text-gray-500 mt-4">Selecciona una solución para visualizar</p>
-            )}
-          </div>
-  
-          {/* Calificación */}
-          {selectedSolution && currentUser && currentUser.id !== selectedSolution.user_id && !hasRated && (
-            <div className="w-full md:w-1/2 lg:w-1/3 bg-gray-50 p-4 rounded mt-6">
-              <p className="font-bold mb-2 text-center">Calificación:</p>
-              <div className="flex justify-center mb-2">
-                {[1, 2, 3, 4, 5, 6, 7].map((star) => (
-                  <button key={star} onClick={() => setSelectedRating(star)} className={`text-2xl ${star <= selectedRating ? 'text-yellow-400' : 'text-gray-300'}`}>
-                    ★
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="w-full p-2 border rounded mb-2"
-                rows="3"
-                placeholder="Escribe un comentario (opcional)"
-              />
-              <button
-                onClick={handleSubmitRating}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
-              >
-                Enviar Calificación
-              </button>
+                    const coords = validPieces.map(p => p.coordenadas[0]);
+                    const minX = Math.min(...coords.map(c => c.x));
+                    const maxX = Math.max(...coords.map(c => c.x));
+                    const minY = Math.min(...coords.map(c => c.y));
+                    const maxY = Math.max(...coords.map(c => c.y));
+
+                    const boundingWidth = maxX - minX;
+                    const boundingHeight = maxY - minY;
+
+                    const containerWidth = 1400;
+                    const containerHeight = 550;
+
+                    const offsetX = containerWidth / 2 - (minX + boundingWidth / 2);
+                    const offsetY = containerHeight / 2 - (minY + boundingHeight / 2);
+
+                    return validPieces.map((piece, index) => {
+                      const { svgPath, fillColor, width, height, centerPoint } = getPieceAttributesFull(piece.shape, index);
+                      const [centerX, centerY] = centerPoint.split(',').map(Number);
+
+                      const posX = piece.coordenadas[0].x + offsetX;
+                      const posY = piece.coordenadas[0].y + offsetY;
+
+                      return (
+                        <svg
+                          key={index}
+                          width="120"
+                          height="120"
+                          viewBox="-10 -10 100 100"
+                          style={{
+                            position: "absolute",
+                            left: `${posX}px`,
+                            top: `${posY}px`,
+                            overflow: 'visible',
+                          }}
+                        >
+                          <g transform={`rotate(${piece.orientacion || 0} ${centerX} ${centerY})`}>
+                            <path d={svgPath} fill={fillColor} stroke="black" strokeWidth="2" />
+                          </g>
+                        </svg>
+                      );
+                    });
+                  })()}
+                </>
+              ) : (
+                <p className="text-center text-gray-500 mt-4">Selecciona una solución para visualizar</p>
+              )}
             </div>
+
+            {/* Bloques de alternativas y calificación alineados */}
+            <div className="flex flex-col md:flex-row md:justify-start gap-6 mt-6">
+              {/* Encuesta de palabras alternativas */}
+              {selectedSolution && options.length > 0 && !hasVoted && (
+                <div className="w-full md:w-1/2 lg:w-1/3 bg-gray-50 p-4 rounded shadow">
+                  <p className="font-bold mb-2 text-center">
+                    ¿Cuál palabra describe mejor la solución?
+                  </p>
+                  <div className="space-y-3">
+                    {options.map((word, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleAlternativeClick(word)}
+                        disabled={hasVoted}
+                        className="w-full text-left px-4 py-2 border rounded hover:bg-blue-100"
+                      >
+                        {word}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedSolution && hasVoted && currentUser && currentUser.id !== selectedSolution.user_id && !hasRated && (
+                <div className="w-full md:w-1/2 lg:w-1/3 bg-gray-50 p-4 rounded shadow">
+                  <p className="font-bold mb-2 text-center">Calificación:</p>
+                  <div className="flex justify-center mb-2">
+                    {[1, 2, 3, 4, 5, 6, 7].map((star) => (
+                      <button key={star} onClick={() => setSelectedRating(star)} className={`text-2xl ${star <= selectedRating ? 'text-yellow-400' : 'text-gray-300'}`}>
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="w-full p-2 border rounded mb-2"
+                    rows="3"
+                    placeholder="Escribe un comentario (opcional)"
+                  />
+                  <button
+                    onClick={handleSubmitRating}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full"
+                  >
+                    Enviar Calificación
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          {selectedSolution && hasVoted && (
+            <p className="mt-2 text-green-600 text-center font-semibold w-full max-w-[1400px] mx-auto">
+              ¡Gracias por votar!
+            </p>
           )}
         </div>
       </div>
     </div>
   );
-  
-  
 };
 
 export default SolutionsPage;
