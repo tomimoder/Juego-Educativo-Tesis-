@@ -14,6 +14,12 @@ const TangramPiece = ({ shape, position, id, onDragStop, rotation = 0, bloqueada
     setIsDragging(false);
   }, [isSelected, isMobile, bloqueada, draggable]);
 
+  useEffect(() => {
+    if (nivelActual === 3) {
+      setDragEnabled(!bloqueada && draggable);
+    }
+  }, [nivelActual, bloqueada, draggable]);
+
   let svgPath, fillColor, centerPoint, svgWidth, svgHeight, viewBox;
   switch (shape) {
     case 'large-triangle':

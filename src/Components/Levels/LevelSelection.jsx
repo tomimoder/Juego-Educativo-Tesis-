@@ -5,9 +5,25 @@ import { Button } from "../ui/button"; // Importamos el botón reutilizable
 
 const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleLevelSelect }) => {
   const navigate = useNavigate();
+  const VITE_API_URL = "http://192.168.7.203:3001";
 
   const handleViewSolutions = () => {
     navigate(`/solutions/${level}`);
+  };
+
+  const handleViewStatistics = async (levelId) => {
+     const userResponse = await fetch(`${VITE_API_URL}/api/me`, {
+      method: "GET",
+      credentials: "include",
+    });
+    console.log("userresponse", userResponse);  
+    if (!userResponse.ok) throw new Error("Usuario no autenticado");
+
+    const user = await userResponse.json();
+
+    console.log("user", user);
+
+    navigate(`/statistics/${levelId}/${user.id}`);
   };
 
   return (
@@ -46,7 +62,7 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleL
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <button
-              onClick={() => handleLevelSelect(level)}
+              onClick={() =>  handleLevelSelect(level)}
               className="absolute inset-0 flex items-center justify-center bg-green-600 bg-opacity-90 text-white text-sm font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
             >
               Repetir
@@ -55,12 +71,20 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleL
         )}
       </button>
       {completed && (
-        <button
-          onClick={handleViewSolutions}
-          className="mt-2 text-sm bg-blue-500 text-white rounded px-3 py-1.5 hover:bg-blue-600"
-        >
-          Ver Soluciones
-        </button>
+        <>
+          <button
+            onClick={handleViewSolutions}
+            className="mt-2 text-sm bg-blue-500 text-white rounded px-3 py-1.5 hover:bg-blue-600"
+          >
+            Ver Soluciones
+          </button>
+          <button
+            onClick={() => handleViewStatistics(level)}
+            className="mt-2 text-sm bg-green-600 text-white rounded px-3 py-1.5 hover:bg-green-700"
+          >
+            Ver estadísticas del nivel
+          </button>
+        </>
       )}
     </div>
   );
@@ -156,6 +180,7 @@ export default function LevelSelection() {
     setShowVideoModal(false);
     navigate(`/game/${selectedLevel.level}`, { state: selectedLevel });
   };
+
 
   if (loading) {
     return (

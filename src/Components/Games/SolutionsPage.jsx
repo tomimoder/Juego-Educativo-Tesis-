@@ -122,33 +122,37 @@ const SolutionsPage = ({
 
   useEffect(() => {
     const fetchLatestSolutions = async () => {
-      try {
-        setIsLoading(true);
-        const user = await fetchUser();
-        if (!user) {
-          setIsLoading(false);
-          return;
-        }
+  try {
+    setIsLoading(true);
+    const user = await fetchUser();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
-        const response = await fetch(`${VITE_API_URL}/api/assigned-solutions/${levelId}/${user.id}`, {
-          method: "GET",
-          credentials: "include",
-        });
+    const apiUrl = levelId === '3'
+      ? `${VITE_API_URL}/api/levels/assigned-solutions-level3/${levelId}/${user.id}`
+      : `${VITE_API_URL}/api/assigned-solutions/${levelId}/${user.id}`;
 
-        if (!response.ok) {
-          setSolutions([]);
-          return;
-        }
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      credentials: "include",
+    });
 
-        const data = await response.json();
-        console.log("📌 Soluciones obtenidas:", data);
-        setSolutions(data.solutions.length > 0 ? data.solutions : []);
-      } catch (error) {
-        setSolutions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!response.ok) {
+      setSolutions([]);
+      return;
+    }
+
+    const data = await response.json();
+    console.log("📌 Soluciones obtenidas:", data);
+    setSolutions(data.solutions.length > 0 ? data.solutions : []);
+  } catch (error) {
+    setSolutions([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
     if (levelId) {
@@ -189,6 +193,7 @@ const SolutionsPage = ({
           userId: currentUser.id,
           rating: selectedRating,
           comment: comment.trim(),
+          level: levelId,
         }),
       });
 
@@ -239,7 +244,8 @@ const SolutionsPage = ({
         body: JSON.stringify({
           solutionId: selectedSolution.id,
           userId: currentUser.id,
-          word
+          word,
+          level: levelId
         })
       });
 

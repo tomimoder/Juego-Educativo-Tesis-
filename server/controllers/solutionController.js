@@ -102,53 +102,118 @@ const getLatestSolutions = async (req, res) => {
 
 
 const rateSolution = async (req, res) => {
-    const { solutionId, userId, rating, comment } = req.body;
-  
-    try {
-      await pool.query('START TRANSACTION');
-  
+  const { solutionId, userId, rating, comment, level } = req.body;
+
+  if (!solutionId || !userId || !rating || !level) {
+    return res.status(400).json({ message: 'Faltan datos' });
+  }
+
+  try {
+    await pool.query('START TRANSACTION');
+
+    if (level === '3') {
+      // Guardar calificación nivel 3
+      await pool.query(
+        `INSERT INTO solutionratings_level3 (solution_id, user_id, rating, comment)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE rating = ?, comment = ?`,
+        [solutionId, userId, rating, comment, rating, comment]
+      );
+
+      // Marcar como calificada nivel 3
+      await pool.query(
+        `UPDATE solutionassignmentslevel3
+         SET is_rated = TRUE
+         WHERE solution_id = ? AND user_id = ?`,
+        [solutionId, userId]
+      );
+
+      // Actualizar promedio nivel 3
+      const [ratings] = await pool.query(
+        `SELECT AVG(rating) as avg_rating, COUNT(*) as total
+         FROM solutionratings_level3
+         WHERE solution_id = ?`,
+        [solutionId]
+      );
+
+      // Actualiza la tabla respuestas (nivel 3)
+      await pool.query(
+        `UPDATE respuestas
+         SET average_rating = ?, total_ratings = ?
+         WHERE id = ?`,
+        [ratings[0].avg_rating, ratings[0].total, solutionId]
+      );
+
+      await logAction(userId, 'RATE_SOLUTION', {
+        solutionId,
+        rating,
+        comment,
+        level,
+        timestamp: new Date().toISOString(),
+      });
+
+      await pool.query('COMMIT');
+
+      res.json({
+        message: 'Rating saved successfully (nivel 3)',
+        newAverage: ratings[0].avg_rating,
+        totalRatings: ratings[0].total,
+      });
+
+    } else {
+      // Tu lógica actual para niveles normales
       await pool.query(
         `INSERT INTO solutionratings (solution_id, user_id, rating, comment)
          VALUES (?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE rating = ?, comment = ?`,
         [solutionId, userId, rating, comment, rating, comment]
       );
-  
+
+      await pool.query(
+        `UPDATE solutionassignments
+         SET is_rated = TRUE
+         WHERE solution_id = ? AND user_id = ?`,
+        [solutionId, userId]
+      );
+
       const [ratings] = await pool.query(
         `SELECT AVG(rating) as avg_rating, COUNT(*) as total
          FROM solutionratings
          WHERE solution_id = ?`,
         [solutionId]
       );
-  
+
       await pool.query(
-        `UPDATE usertangramsolutions 
+        `UPDATE usertangramsolutions
          SET average_rating = ?, total_ratings = ?
          WHERE id = ?`,
         [ratings[0].avg_rating, ratings[0].total, solutionId]
       );
-  
-      // Registrar log
+
       await logAction(userId, 'RATE_SOLUTION', {
         solutionId,
         rating,
         comment,
+        level,
         timestamp: new Date().toISOString(),
       });
-  
+
       await pool.query('COMMIT');
-  
+
       res.json({
         message: 'Rating saved successfully',
         newAverage: ratings[0].avg_rating,
         totalRatings: ratings[0].total,
       });
-    } catch (error) {
-      await pool.query('ROLLBACK');
-      console.error('Error saving rating:', error);
-      res.status(500).json({ message: 'Error saving rating' });
     }
-  };
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error('Error saving rating:', error);
+    res.status(500).json({ message: 'Error saving rating' });
+  }
+};
+
+
 
 const checkUserRating = async (req, res) => {
     const { solutionId, userId } = req.params;
@@ -418,6 +483,8 @@ const logPieceMovement = async (req, res) => {
             timestamp: new Date().toISOString(),
         });
 
+        console.log(`✅ Movimiento de pieza registrado: userId=${userId}, levelId=${levelId}, pieceId=${pieceId}, position=${JSON.stringify(position)}, rotation=${rotation}`);
+
         res.status(200).json({ message: "Movimiento registrado" });
     } catch(error){
         console.error("Error registrando movimiento de pieza:", error);
@@ -500,9 +567,6 @@ const saveAlternativeSelection = async (req, res) => {
 
 
 
-
-
-
 module.exports = {
     getSolution,
     saveUserSolution,
@@ -519,5 +583,5 @@ module.exports = {
     logPieceMovement,
     logLevelStart,
     getMoveCount,
-    saveAlternativeSelection
+    saveAlternativeSelection,
 }

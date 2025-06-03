@@ -12,6 +12,7 @@ import RatingsPage from './Components/Ratings/RatingsPage';
 import SolutionsPage from './Components/Games/SolutionsPage'; 
 import LevelVideoPage from './Components/Levels/LevelVideoPage';
 import WaitingUsersLayout from '../src/Components/Admin/page'; 
+import LevelStatistics from './Components/Levels/LevelStatistics';
 
 window.process = process;
 
@@ -64,6 +65,7 @@ function App() {
         <Route path="/solutions/:levelId" element={<SolutionsPage />} />
         <Route path="/waiting-users" element={<WaitingUsersLayout  />} />
         <Route path="/level-video/:levelId" element={<LevelVideoPage />} />
+        <Route path="/statistics/:levelId/:userId" element={<LevelStatistics />} />
       </Routes>
     </Router>
   );

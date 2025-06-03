@@ -47,16 +47,6 @@ const TuComponente = ({ currentLevel, isSameLevel, handleSaveSolution, hasSavedS
         </button>
         
       )}
-
-      {hasSavedSolution && (
-        <button
-          onClick={handleViewSolutions}
-          className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
-        >
-          Ver Soluciones
-        </button>
-      )}
-
       {showPartnerJoinedMsg && (
         <p style={{ color: 'green', marginTop: '8px' }}>
           Tu compañero ya entró. Ya puedes continuar!!.
@@ -98,6 +88,15 @@ function GameInterface() {
   const [isSameLevel, setIsSameLevel] = useState(true);
   const [levelStartTime, setLevelStartTime] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [similarWords, setSimilarWords] = useState([]);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [justification, setJustification] = useState("");
+  const [secondWord, setSecondWord] = useState(null);
+  const [followUpQuestion, setFollowUpQuestion] = useState(null);
+  const [followUpAlternatives, setFollowUpAlternatives] = useState([]);
+  const [selections, setSelections] = useState([]);
+  const [firstSelectedWord, setFirstSelectedWord] = useState(null); // para alternativa1
+  const [selectedWord, setSelectedWord] = useState(null); // para atributos u otras selecciones
 
 
   const VITE_API_URL = "http://192.168.7.203:3001"
@@ -141,18 +140,66 @@ function GameInterface() {
     },
   }
 
+  const FIGURAS_NIVEL3_DEF = {
+    ballena: {
+      piezas: [
+        { id: 1, x: 511.3, y: -300.1, rotation: 45 },
+        { id: 2, x: 431.8, y: -340.1, rotation: 225 },
+        { id: 3, x: 657.3, y: -416.1, rotation: 0 },
+        { id: 4, x: 662.8, y: -330.1, rotation: 90 },
+        { id: 5, x: 592.3, y: -316.1, rotation: 0 },
+        { id: 6, x: 452.8, y: -303.1, rotation: 45 },
+        { id: 7, x: 636.3, y: -315.1, rotation: 0 },
+      ],
+    },
+    cohete: {
+      piezas: [
+        { id: 1, x: 204.3, y: -459.1, rotation: 180 },
+        { id: 2, x: 203-8, y: -401.1, rotation: 0 },
+        { id: 3, x: 170.3, y: -481.1, rotation: 135 },
+        { id: 4, x: 193.8, y: -352.1, rotation: 270 },
+        { id: 5, x: 353.3, y: -312.1, rotation: 135 },
+        { id: 6, x: 297.8, y: -491.1, rotation: 45 },
+        { id: 7, x: 310.3, y: -381.1, rotation: 0 },
+      ],
+    },
+    avion: {
+      piezas: [
+        { id: 1, x: 534.3, y: -358.1, rotation: 0 },
+        { id: 2, x: 397.8, y: -398.1, rotation: 45 },
+        { id: 3, x: 544.3, y: -263.1, rotation: 135 },
+        { id: 4, x: 617.8, y: -301.1, rotation: 180 },
+        { id: 5, x: 615.3, y: -388.1, rotation: 180 },
+        { id: 6, x: 515.8, y: -346.1, rotation: 45 },
+        { id: 7, x: 661.3, y: -359.1, rotation: 0 },
+      ],
+    },
+  }
+
   useEffect(scrollToBottom, [messages])
 
   const [isFiguraSeleccionada, setIsFiguraSeleccionada] = useState(false)
 
   useEffect(() => {
     if (levelData?.level === 2 && !isFiguraSeleccionada) {
-      const figuras = Object.keys(FIGURAS_NIVEL3)
-      const figuraAleatoria = figuras[Math.floor(Math.random() * figuras.length)]
-      setFiguraActual(FIGURAS_NIVEL3[figuraAleatoria])
-      setIsFiguraSeleccionada(true)
+      const figuras = Object.keys(FIGURAS_NIVEL3);
+      const figuraAleatoria = figuras[Math.floor(Math.random() * figuras.length)];
+      setFiguraActual(FIGURAS_NIVEL3[figuraAleatoria]);
+      setIsFiguraSeleccionada(true);
+    } else if (levelData?.level === 3 && !isFiguraSeleccionada) {
+      const figuras = Object.keys(FIGURAS_NIVEL3_DEF);
+      const figuraAleatoria = figuras[Math.floor(Math.random() * figuras.length)];
+      setFiguraActual({ ...FIGURAS_NIVEL3_DEF[figuraAleatoria], descripcion: figuraAleatoria });
+      setIsFiguraSeleccionada(true);
     }
   }, [levelData, isFiguraSeleccionada])
+
+  useEffect(() => {
+    if (levelData?.level === 3 && figuraActual?.descripcion) {
+      fetchSimilarWords(figuraActual.descripcion);
+      console.log("📌 Descripción de la figura actual:", figuraActual.descripcion);
+    }
+  }, [figuraActual, levelData])
 
   useEffect(() => {
     const fetchLevelData = async () => {
@@ -429,7 +476,9 @@ function GameInterface() {
         alert("¡Solución guardada!");
         setHasSavedSolution(true);
         await fetchLatestSolutions();
-        await markLevelAsCompleted();
+        if (timeLeft === 0) {
+          navigate(`/solutions/${levelId}`);
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error("Error del servidor:", errorData);
@@ -489,22 +538,28 @@ function GameInterface() {
   };
 
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timerId = setInterval(() => {
-        setTimeLeft((time) => {
-          if (time - 1 <= 0) {
-            clearInterval(timerId);
-            setIsTimeUpPopupOpen(true);
-            handleSaveSolution();
-            markLevelAsCompleted();
-            return 0;
+  if (timeLeft > 0) {
+    const timerId = setInterval(() => {
+      setTimeLeft((time) => {
+        if (time - 1 <= 0) {
+          clearInterval(timerId);
+
+          if (!hasSavedSolution && levelData?.level !== 3) {
+            setIsModalOpen(true); // Forzar al jugador a describir su solución
+          } else {
+            navigate(`/solutions/${levelId}`); // Redirigir automáticamente
           }
-          return time - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timerId);
-    }
-  }, [timeLeft]);
+
+          return 0;
+        }
+        return time - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }
+}, [timeLeft, hasSavedSolution]);
+
 
   useEffect(() => {
     if (levelData?.level === 4 && socket && chatGroupId) {
@@ -674,9 +729,154 @@ function GameInterface() {
     setIsTimeUpPopupOpen(false)
   }
 
+
+  const fetchSimilarWords = async (description) => {
+    try {
+      const response = await fetch(`${VITE_API_URL}/api/gemini/similar-words`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ description })
+      });
+
+      if (!response.ok) throw new Error("Error al obtener palabras similares");
+
+      const data = await response.json();
+      console.log("📌 Palabras similares obtenidas:", data);
+      setSimilarWords(data.words);
+    } catch (error) {
+      console.error("❌ Error obteniendo palabras similares:", error);
+      setSimilarWords([]);
+    }
+  };
+
+  const sendLevel3Response = async (alternativa1, alternativa2, justificacion) => {
+  console.log("📤 Enviando respuesta del nivel 3:", { alternativa1, alternativa2, justificacion });
+  if (!currentUser || !figuraActual?.descripcion) {
+    console.error("Usuario o figura actual no definidos", {
+      currentUser,
+      figuraDescripcion: figuraActual?.descripcion,
+    });
+    alert("Error: Usuario o figura actual no definidos.");
+    return;
+  }
+
+  if (!alternativa1) {
+    alert("Error: Debes seleccionar una palabra para la primera alternativa.");
+    return;
+  }
+
+  // Mapeo de IDs a shapes
+const mapIdToShape = (id) => {
+  switch (id) {
+    case 1: return "large-triangle";
+    case 2: return "large-triangle"; // Normalizado de large-triangle2
+    case 3: return "medium-triangle";
+    case 4: return "small-triangle";
+    case 5: return "small-triangle";
+    case 6: return "parallelogram";
+    case 7: return "diamond";
+    default: return "unknown";
+  }
+};
+
+// Construir el payload con la estructura deseada
+const payload = {
+  usuario_id: currentUser.id,
+  figura: figuraActual?.descripcion,
+  alternativa1,
+  alternativa2,
+  justificacion,
+  coordenadas: figuraActual.piezas.map(p => ({
+    shape: mapIdToShape(p.id),
+    coordenadas: [{ x: p.x || p.position?.x || 0, y: p.y || p.position?.y || 0 }],
+    orientacion: p.rotation || p.angle || 0,
+    coordinates: { x: p.x || p.position?.x || 0, y: p.y || p.position?.y || 0 },
+    orientation: p.rotation || p.angle || 0
+  }))
+};
+
+console.log("piezas:", JSON.stringify(figuraActual?.piezas, null, 2));
+console.log("📤 Payload being sent to /api/alternative/save-level3-response:", payload);
+
+try {
+  const response = await fetch(`${VITE_API_URL}/api/alternative/save-level3-response`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Error al guardar la solución");
+  }
+
+  console.log("✅ Solución guardada con éxito");
+} catch (error) {
+  console.error("❌ Error al guardar la solución:", error);
+  alert("Error al guardar la solución: " + error.message);
+}
+};
+
+  useEffect(() => {
+    if (levelData?.level === 3 && userSolution.description) {
+      fetchSimilarWords(userSolution.description);
+    }
+  }, [levelData, userSolution.description]);
+
+  const askFollowUpQuestion = async (selectedWord) => {
+    try {
+      const response = await fetch(`${VITE_API_URL}/api/gemini/word-attributes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ word: selectedWord }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error fetching word attributes");
+      }
+
+      const data = await response.json();
+      console.log("📌 Word attributes received:", data);
+
+      // Update the follow-up question and alternatives
+      setFollowUpQuestion(`¿Qué características describen mejor la palabra "${selectedWord}"?`);
+      setFollowUpAlternatives(data.attributes);
+    } catch (error) {
+      console.error("Error fetching word attributes:", error);
+      alert("Error fetching word attributes. Please try again.");
+    }
+  };
+
+  if (levelData?.level === 3) {
+    const options = figuraActual?.descripcion
+      ? [figuraActual.descripcion, ...similarWords]
+      : similarWords;
+  }
+
   if (!levelData || !currentUser) {
     return <div>Cargando...</div>
   }
+
+  const handleAddSelection = () => {
+    if (selectedWord && justification.trim()) {
+      setSelections((prev) => [...prev, { word: selectedWord, justification }]);
+      setSelectedWord(null);
+      setJustification("");
+    }
+  };
+
+  const handleSubmitSelections = async () => {
+    if (selections.length > 0) {
+      const secondAlternative = selections.map((item) => item.word).join(", ");
+      const combinedJustification = selections.map((item) => item.justification).join("; ");
+      await sendLevel3Response(firstSelectedWord, secondAlternative, combinedJustification);
+      setHasVoted(true);
+    }
+  };
 
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
@@ -722,6 +922,7 @@ function GameInterface() {
                 nivelActual={levelData?.level}
                 solucionInicial={levelData?.level === 4 ? (Array.isArray(userSolution.solution) ? userSolution.solution : []) : []}
                 piezasPermitidas={assignedPieces}
+                currentUser={currentUser}
               />
             )}
           </div>
@@ -829,6 +1030,114 @@ function GameInterface() {
                       </button>
                     </form>
                   </>
+                )}
+              </div>
+            </div>
+          )}
+
+         {levelData.level === 3 && (
+            <div className="bg-white rounded-lg p-4 shadow-lg flex flex-col h-[300px] sm:h-[400px]">
+              <h2 className="text-xl font-bold mb-4">¿Cuál palabra describe mejor la solución?</h2>
+              <div className="space-y-3 w-full max-w-md mx-auto">
+                {(figuraActual?.descripcion ? [figuraActual.descripcion, ...similarWords] : similarWords).map((word, index) => (
+                  <button
+                    key={index}
+                    onClick={async () => {
+                      if (!firstSelectedWord) {
+                        const firstWord = word;
+                        setFirstSelectedWord(firstWord); // 👈 se guarda aquí
+                        console.log("Primera alternativa seleccionada:", firstWord);
+                        await askFollowUpQuestion(firstWord);
+                      } else {
+                        const secondWordValue = word;
+                        setSecondWord(secondWordValue);
+                        console.log("Segunda alternativa seleccionada:", secondWordValue);
+                      }
+                    }}
+                    disabled={hasVoted || firstSelectedWord === word || secondWord === word}
+                    className={`w-full text-left px-4 py-2 border rounded ${firstSelectedWord === word || secondWord === word ? 'bg-blue-100' : 'hover:bg-blue-100'}`}
+                  >
+                    {word}
+                  </button>
+
+                ))}
+                {secondWord && (
+                  <div className="mt-4">
+                    <textarea
+                      value={justification}
+                      onChange={(e) => setJustification(e.target.value)}
+                      placeholder={`¿Qué piezas se te hacen similares a la respuesta "${secondWord}"?`}
+                      className="w-full p-2 border rounded"
+                    />
+                    <button
+                      onClick={async () => {
+                        await sendLevel3Response(firstSelectedWord, secondWord, justification);
+                        setHasVoted(true);
+                      }}
+                      disabled={!justification.trim()}
+                      className="mt-2 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+                    >
+                      Guardar Respuesta
+                    </button>
+
+
+                  </div>
+                )}
+                {hasVoted && (
+                  <p className="text-green-600 font-semibold mt-4">¡Gracias por votar!</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {followUpQuestion && (
+            <div className="bg-white rounded-lg p-4 shadow-lg flex flex-col h-[300px] sm:h-[400px]">
+              <h2 className="text-xl font-bold mb-4">{followUpQuestion}</h2>
+              <div className="space-y-3 w-full max-w-md mx-auto">
+                {followUpAlternatives.map((attribute, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedWord(attribute)}
+                    className={`w-full text-left px-4 py-2 border rounded ${selectedWord === attribute ? 'bg-blue-100' : 'hover:bg-blue-100'}`}
+                  >
+                    {attribute}
+                  </button>
+                ))}
+                {selectedWord && (
+                  <div className="mt-4">
+                    <textarea
+                      value={justification}
+                      onChange={(e) => setJustification(e.target.value)}
+                      placeholder={`¿Por qué seleccionaste "${selectedWord}"?`}
+                      className="w-full p-2 border rounded"
+                    />
+                    <button
+                      onClick={handleAddSelection}
+                      disabled={!justification.trim()}
+                      className="mt-2 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+                    >
+                      Agregar Selección
+                    </button>
+                  </div>
+                )}
+                {selections.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="font-bold">Selecciones:</h3>
+                    <ul className="list-disc pl-5">
+                      {selections.map((item, index) => (
+                        <li key={index}>{item.word}: {item.justification}, {selectedWord}</li>
+                      ))}
+                    </ul>
+                    <button
+                      onClick={handleSubmitSelections}
+                      className="mt-2 w-full bg-green-500 text-white py-2 rounded hover:bg-green-600"
+                    >
+                      Enviar Respuesta
+                    </button>
+                  </div>
+                )}
+                {hasVoted && (
+                  <p className="text-green-600 font-semibold mt-4">¡Gracias por tu respuesta!</p>
                 )}
               </div>
             </div>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TangramPiece from './TangramPiece';
 
-const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], piezasPermitidas = [] }) => {
+const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], piezasPermitidas = [], currentUser }) => {
   const [pieces, setPieces] = useState([]);
   const [selectedPieceId, setSelectedPieceId] = useState(null);
   const [pieceOrder, setPieceOrder] = useState([]);
   const boardRef = useRef(null);
   const initializedRef = useRef(false);
   const isMobile = window.innerWidth < 768;
+  const VITE_API_URL = "http://192.168.7.203:3001"
 
   useEffect(() => {
     if (boardRef.current && !initializedRef.current) {
@@ -164,37 +165,58 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
   }, []);
 
   const handleDragStop = (id, newPosition) => {
-    if (nivelActual === 2 && piezasBloqueadas.some(p => p.id === id)) return;
+  if (nivelActual === 2 && nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
   
-    console.log(`📌 Pieza ${id} movida a`, newPosition);
-  
-    if (!newPosition || typeof newPosition !== 'object' || newPosition.x === undefined || newPosition.y === undefined) {
-      console.error("❌ Error: newPosition no tiene la estructura esperada:", newPosition);
-      return;
-    }
-  
-    setPieces(prevPieces => {
-      const updatedPieces = prevPieces.map(piece =>
-        piece.id === id ? { ...piece, position: newPosition } : piece
-      );
-  
-      const movedPiece = updatedPieces.find(piece => piece.id === id);
-      const pieceRotation = movedPiece ? movedPiece.rotation : 0;
-  
-      if (nivelActual === 5 || nivelActual === 4) {
-        console.log(`📤 Emitiendo movimiento: Pieza ${id} a x:${newPosition.x}, y:${newPosition.y}, rotación: ${pieceRotation}`);
-        onPieceMoved(id, { x: newPosition.x, y: newPosition.y }, pieceRotation);
-      }
-  
-      updateSolutionFromPieces(updatedPieces);
-      return updatedPieces;
-    });
+  console.log(`📌 Pieza ${id} movida a`, newPosition);
 
-    setPieceOrder(prevOrder => [
-      id,
-      ...prevOrder.filter(pieceId => pieceId !== id),
-    ]);
-  };
+  if (!newPosition || typeof newPosition !== 'object' || newPosition.x === undefined || newPosition.y === undefined) {
+    console.error("❌ Error: newPosition no tiene la estructura esperada:", newPosition);
+    return;
+  }
+
+  // Registrar el movimiento en el servidor
+  fetch(`${VITE_API_URL}/api/levels/logs/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      userId: currentUser.id,
+      levelId: nivelActual,
+      pieceId: id,
+      position: newPosition,
+      rotation: pieces.find(piece => piece.id === id)?.rotation || 0
+    })
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) {
+        console.error("❌ Error al registrar el movimiento:", data.error);
+      }
+    })
+    .catch(error => console.error("❌ Error en la solicitud de registro de movimiento:", error));
+
+  setPieces(prevPieces => {
+    const updatedPieces = prevPieces.map(piece =>
+      piece.id === id ? { ...piece, position: newPosition } : piece
+    );
+
+    const movedPiece = updatedPieces.find(piece => piece.id === id);
+    const pieceRotation = movedPiece ? movedPiece.rotation : 0;
+
+    if (nivelActual === 5 || nivelActual === 4) {
+      console.log(`📤 Emitiendo movimiento: Pieza ${id} a x:${newPosition.x}, y:${newPosition.y}, rotación: ${pieceRotation}`);
+      onPieceMoved(id, { x: newPosition.x, y: newPosition.y }, pieceRotation);
+    }
+
+    updateSolutionFromPieces(updatedPieces);
+    return updatedPieces;
+  });
+
+  setPieceOrder(prevOrder => [
+    id,
+    ...prevOrder.filter(pieceId => pieceId !== id),
+  ]);
+};
 
   const handleSelectPiece = (id) => {
     console.log(`🔍 Pieza ${id} seleccionada`);
@@ -207,38 +229,58 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     }
   };
 
-  const handleRotatePiece = (id, angle) => {
-    if (nivelActual === 2 && piezasBloqueadas.some(p => p.id === id)) return;
-  
-    const pieceId = id || selectedPieceId;
-    if (!pieceId) return;
-  
-    setPieces(prevPieces => {
-      const updatedPieces = prevPieces.map(piece =>
-        piece.id === pieceId
-          ? { ...piece, rotation: (piece.rotation + angle + 360) % 360 }
-          : piece
-      );
-  
-      const rotatedPiece = updatedPieces.find(piece => piece.id === pieceId);
-      const newRotation = rotatedPiece ? rotatedPiece.rotation : 0;
-      const piecePosition = rotatedPiece ? rotatedPiece.position : { x: 0, y: 0 };
-  
-      if (nivelActual === 5 || nivelActual === 4) {
-        console.log(`📤 Emitiendo rotación: Pieza ${pieceId} a rotación ${newRotation}`);
-        onPieceMoved(pieceId, piecePosition, newRotation);
-      }
-  
-      updateSolutionFromPieces(updatedPieces);
-      return updatedPieces;
-    });
-  
-    
-    setPieceOrder(prevOrder => [
-      pieceId,
-      ...prevOrder.filter(id => id !== pieceId),
-    ]);
-  };
+const handleRotatePiece = (id, angle) => {
+  if (nivelActual === 2 && nivelActual === 3 && piezasBloqueadas.some(p => p.id === id)) return;
+
+  const pieceId = id || selectedPieceId;
+  if (!pieceId) return;
+
+  setPieces(prevPieces => {
+    const updatedPieces = prevPieces.map(piece =>
+      piece.id === pieceId
+        ? { ...piece, rotation: (piece.rotation + angle + 360) % 360 }
+        : piece
+    );
+
+    const rotatedPiece = updatedPieces.find(piece => piece.id === pieceId);
+    const newRotation = rotatedPiece ? rotatedPiece.rotation : 0;
+    const piecePosition = rotatedPiece ? rotatedPiece.position : { x: 0, y: 0 };
+
+    // Registrar la rotación en el servidor
+    fetch(`${VITE_API_URL}/api/levels/logs/move`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        userId: currentUser.id,
+        levelId: nivelActual,
+        pieceId: pieceId,
+        position: piecePosition,
+        rotation: newRotation
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          console.error("❌ Error al registrar la rotación:", data.error);
+        }
+      })
+      .catch(error => console.error("❌ Error en la solicitud de registro de rotación:", error));
+
+    if (nivelActual === 5 || nivelActual === 4) {
+      console.log(`📤 Emitiendo rotación: Pieza ${pieceId} a rotación ${newRotation}`);
+      onPieceMoved(pieceId, piecePosition, newRotation);
+    }
+
+    updateSolutionFromPieces(updatedPieces);
+    return updatedPieces;
+  });
+
+  setPieceOrder(prevOrder => [
+    pieceId,
+    ...prevOrder.filter(id => id !== pieceId),
+  ]);
+};
   
   
 
@@ -263,6 +305,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
     console.log("🔍 Seleccionando pieza desde dropdown:", selectedId);
     handleSelectPiece(selectedId);
   };
+
 
   return (
     
