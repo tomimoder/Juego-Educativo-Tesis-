@@ -62,6 +62,8 @@ const SolutionsPage = ({
   const [isLoading, setIsLoading] = useState(false);
   const [similarWords, setSimilarWords] = useState([]);
   const [hasVoted, setHasVoted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutos fijos
+  const [timerFinished, setTimerFinished] = useState(false); // Saber si terminó el tiempo
   const VITE_API_URL = "http://192.168.7.203:3001"
 
 
@@ -269,16 +271,64 @@ const SolutionsPage = ({
 
 
 
+  // Obtener el tiempo límite del nivel (puede venir de solution o prop, aquí ejemplo con solution)
+  useEffect(() => {
+    if (selectedSolution && selectedSolution.time_limit) {
+      setTimeLeft(selectedSolution.time_limit); // en segundos
+    } else if (selectedSolution && selectedSolution.level_time) {
+      setTimeLeft(selectedSolution.level_time); // fallback
+    }
+  }, [selectedSolution]);
+
+  // Temporizador
+  useEffect(() => {
+    if (timeLeft === null || timerFinished) return;
+    if (timeLeft <= 0) {
+      setTimerFinished(true);
+      // Llamar a /try-unlock para desbloquear el siguiente nivel
+      if (currentUser && selectedSolution && selectedSolution.level_id) {
+        fetch(`${VITE_API_URL}/api/levels/try-unlock`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ userId: currentUser.id, levelId: selectedSolution.level_id })
+        })
+        .then(() => {
+          // Redirigir automáticamente a la página de estadísticas
+          navigate(`/statistics/${selectedSolution.level_id}/${currentUser.id}`);
+        })
+        .catch(() => {
+          // Redirigir aunque falle el unlock
+          navigate(`/statistics/${selectedSolution.level_id}/${currentUser.id}`);
+        });
+      }
+      return;
+    }
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeft, timerFinished, currentUser, selectedSolution, navigate]);
+
+  // Formato mm:ss
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+
   return (
     <div className="game-interface bg-yellow-100 min-h-screen flex flex-col">
       <div className="top-bar bg-green-500 p-2 flex justify-between items-center">
         <h2 className="font-bold">Visualización de Soluciones</h2>
-        <button
-          onClick={() => navigate("/levels")}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium"
-        >
-          ← Volver
-        </button>
+        {/* Mostrar el timer */}
+        {selectedSolution && timeLeft !== null && (
+          <span className="bg-white text-green-700 px-4 py-2 rounded-lg font-bold border border-green-300">
+            Tiempo restante: {formatTime(timeLeft)}
+          </span>
+        )}
+        {/* El botón de volver ha sido eliminado, la redirección es automática al terminar el tiempo */}
       </div>
 
       <div className="flex-grow flex flex-col lg:flex-row">

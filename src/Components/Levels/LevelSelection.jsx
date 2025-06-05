@@ -82,7 +82,7 @@ const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleL
             onClick={() => handleViewStatistics(level)}
             className="mt-2 text-sm bg-green-600 text-white rounded px-3 py-1.5 hover:bg-green-700"
           >
-            Ver estadísticas del nivel
+            Revisión del Nivel
           </button>
         </>
       )}

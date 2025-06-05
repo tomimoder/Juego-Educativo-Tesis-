@@ -9,6 +9,7 @@ export default function LevelStatistics() {
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [timer, setTimer] = useState(120); // 2 minutos
   const API_URL = "http://192.168.7.203:3001";
 
   useEffect(() => {
@@ -33,6 +34,24 @@ export default function LevelStatistics() {
       console.error("Faltan parámetros en URL");
     }
   }, [levelId, userId]);
+
+  useEffect(() => {
+    if (timer === null) return;
+    if (timer <= 0) {
+      navigate('/levels');
+      return;
+    }
+    const interval = setInterval(() => {
+      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timer, navigate]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   if (loading) {
     return (
@@ -59,9 +78,14 @@ export default function LevelStatistics() {
   return (
     <div className="min-h-screen bg-yellow-200 flex items-center justify-center px-4 py-8">
       <div className="bg-yellow-300 p-6 sm:p-10 rounded-3xl shadow-lg w-full max-w-3xl">
-        <h1 className="text-3xl font-bold text-purple-800 text-center mb-6">
-          📊 Estadísticas del Nivel {levelId}
-        </h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold text-purple-800 text-center">
+            📊 Estadísticas del Nivel {levelId}
+          </h1>
+          <span className="bg-white text-green-700 px-4 py-2 rounded-lg font-bold border border-green-300">
+            Tiempo restante: {formatTime(timer)}
+          </span>
+        </div>
 
         <div className="space-y-3 text-base text-gray-800">
           <p><strong>📝 Tu descripción:</strong> {data.description}</p>
@@ -86,15 +110,6 @@ export default function LevelStatistics() {
 
           <div className="flex justify-end mt-3">
           </div>
-        </div>
-
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={() => navigate("/levels")}
-            className="px-4 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
-          >
-            Volver a selección de niveles
-          </button>
         </div>
       </div>
     </div>

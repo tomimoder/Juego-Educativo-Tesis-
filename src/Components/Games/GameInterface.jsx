@@ -851,6 +851,16 @@ try {
     }
   };
 
+  // --- Alternativas fijas para nivel 3 ---
+const getFixedAlternatives = (descripcion) => {
+  if (!descripcion) return [];
+  const desc = descripcion.toLowerCase();
+  if (desc === "ballena") return ["Ballena", "Delfín", "Caracol", "Avión"];
+  if (desc === "avion") return ["Avion", "Pez", "Tiburón", "Pájaro"];
+  if (desc === "cohete") return ["Cohete", "Misil", "Cometa", "Pájaro"];
+  return [descripcion];
+};
+
   if (levelData?.level === 3) {
     const options = figuraActual?.descripcion
       ? [figuraActual.descripcion, ...similarWords]
@@ -1039,7 +1049,7 @@ try {
             <div className="bg-white rounded-lg p-4 shadow-lg flex flex-col h-[300px] sm:h-[400px]">
               <h2 className="text-xl font-bold mb-4">¿Cuál palabra describe mejor la solución?</h2>
               <div className="space-y-3 w-full max-w-md mx-auto">
-                {(figuraActual?.descripcion ? [figuraActual.descripcion, ...similarWords] : similarWords).map((word, index) => (
+                {getFixedAlternatives(figuraActual?.descripcion).map((word, index) => (
                   <button
                     key={index}
                     onClick={async () => {
@@ -1059,7 +1069,6 @@ try {
                   >
                     {word}
                   </button>
-
                 ))}
                 {secondWord && (
                   <div className="mt-4">
@@ -1079,8 +1088,6 @@ try {
                     >
                       Guardar Respuesta
                     </button>
-
-
                   </div>
                 )}
                 {hasVoted && (
