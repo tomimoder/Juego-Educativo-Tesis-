@@ -9,52 +9,21 @@ import Cookies from "js-cookie"
 import SolutionsList from './SolutionsList';
 import DescriptionModal from "../DescriptionModal/DescriptionModal"
 
-const TuComponente = ({ currentLevel, isSameLevel, handleSaveSolution, hasSavedSolution, handleViewSolutions, setIsModalOpen }) => {
-  const [showPartnerJoinedMsg, setShowPartnerJoinedMsg] = useState(false);
-
-  useEffect(() => {
-    console.log("isSameLevel:", isSameLevel);
-    console.log("currentLevel:", currentLevel);
-    if ([2, 4].includes(currentLevel)) {
-      if (isSameLevel) {
-        setShowPartnerJoinedMsg(true);
-        // Oculta el mensaje después de unos segundos
-        const timer = setTimeout(() => setShowPartnerJoinedMsg(false), 3000);
-        return () => clearTimeout(timer);
-      } else {
-        setShowPartnerJoinedMsg(false);
-      }
-    }
-  }, [isSameLevel, currentLevel]);
-
-  const isButtonDisabled = [5, 4].includes(currentLevel) && !isSameLevel;
-
+const TuComponente = ({ handleSaveSolution, hasSavedSolution, setIsModalOpen, currentLevel }) => {
   return (
     <div>
-      {([5, 4].includes(currentLevel) && !isSameLevel) && (
-        <p style={{ color: 'gray', marginTop: '8px' }}>
-          Esperando a tu compañero para continuar...
-        </p>
-      )}
-
-      {(!hasSavedSolution && (!isButtonDisabled || ![5, 4].includes(currentLevel))) && (
+      {!hasSavedSolution && currentLevel != 3 && (
         <button
-          onClick={() => setIsModalOpen(true)} 
-          disabled={isButtonDisabled}
-          className={`bg-blue-500 text-white p-2 rounded-lg ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
         >
           Guardar Solución
         </button>
-        
-      )}
-      {showPartnerJoinedMsg && (
-        <p style={{ color: 'green', marginTop: '8px' }}>
-          Tu compañero ya entró. Ya puedes continuar!!.
-        </p>
       )}
     </div>
   );
 };
+
 
 function GameInterface() {
   const [socket, setSocket] = useState(null)
@@ -666,7 +635,7 @@ function GameInterface() {
     }
 
     // Solo emitir pieceMoved si el nivel actual es 2 o 4
-    if (levelData?.level !== 2 && levelData?.level !== 4) {
+    if (levelData?.level !== 5 && levelData?.level !== 4) {
       console.log(`🚫 Movimiento de pieza bloqueado: Nivel actual (${levelData?.level}) no es 2 ni 4`);
       setError("No puedes mover piezas en este nivel.");
       return;

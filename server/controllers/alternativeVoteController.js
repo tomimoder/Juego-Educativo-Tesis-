@@ -88,16 +88,30 @@ const saveLevel3Response = async (req, res) => {
 
     // Asignar la solución a tres usuarios distintos
     try {
-      // Obtener tres usuarios distintos al creador de la respuesta
+      // Obtener datos del usuario original
+      const [[userData]] = await pool.query(`
+        SELECT school_id, nivel_curso
+        FROM users
+        WHERE id = ?
+      `, [usuario_id]);
+
+      if (!userData) {
+        throw new Error('Usuario no encontrado');
+      }
+      console.log('userdata', userData);   // Obtener tres usuarios distintos del mismo colegio y curso
       const [users] = await pool.query(`
         SELECT id FROM users
         WHERE id != ?
+          AND school_id = ?
+          AND nivel_curso = ?
         ORDER BY RAND()
         LIMIT 3
-      `, [usuario_id]);
+      `, [usuario_id, userData.school_id, userData.nivel_curso]);
 
-      if (users.length < 3) {
-        throw new Error("No hay suficientes usuarios disponibles para asignar la solución.");
+      console.log('users encontrados:', users);
+
+      if (users.length === 0) {
+        throw new Error("No hay ningún usuario disponible para asignar la solución.");
       }
 
       // Asignar la solución a cada usuario

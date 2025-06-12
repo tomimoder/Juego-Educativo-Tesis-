@@ -102,24 +102,29 @@ const SolutionsPage = ({
   };
 
   const onRatingUpdated = async () => {
-    try {
-      const response = await fetch(`${VITE_API_URL}/api/solutions/${levelId}?userId=${currentUser.id}`, {
-        method: "GET",
-        credentials: "include",
-      });
+  try {
+    const apiUrl = levelId === '3'
+      ? `${VITE_API_URL}/api/levels/assigned-solutions-level3/${levelId}/${currentUser.id}`
+      : `${VITE_API_URL}/api/assigned-solutions/${levelId}/${currentUser.id}`;
 
-      if (response.ok) {
-        const data = await response.json();
-        setSolutions(data.solutions.length > 0 ? data.solutions : []);
-      }
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      credentials: "include",
+    });
 
-      if (selectedSolution) {
-        await checkUserRating(selectedSolution.id);
-      }
-    } catch (error) {
-      console.error("❌ Error al actualizar la lista de soluciones:", error);
+    if (response.ok) {
+      const data = await response.json();
+      setSolutions(data.solutions || []);
     }
-  };
+
+    if (selectedSolution) {
+      await checkUserRating(selectedSolution.id);
+    }
+  } catch (error) {
+    console.error("❌ Error al actualizar la lista de soluciones:", error);
+  }
+};
+
 
 
   useEffect(() => {
@@ -271,14 +276,12 @@ const SolutionsPage = ({
 
 
 
-  // Obtener el tiempo límite del nivel (puede venir de solution o prop, aquí ejemplo con solution)
   useEffect(() => {
-    if (selectedSolution && selectedSolution.time_limit) {
-      setTimeLeft(selectedSolution.time_limit); // en segundos
-    } else if (selectedSolution && selectedSolution.level_time) {
-      setTimeLeft(selectedSolution.level_time); // fallback
-    }
-  }, [selectedSolution]);
+  if (solutions.length > 0) {
+    setTimeLeft(300); // o cualquier duración por nivel (en segundos)
+  }
+}, [solutions]);
+
 
   // Temporizador
   useEffect(() => {

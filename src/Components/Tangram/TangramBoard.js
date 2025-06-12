@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TangramPiece from './TangramPiece';
 
+const shapeLabels = {
+  "large-triangle": "Triángulo grande 1",
+  "large-triangle2": "Triángulo grande 2",
+  "medium-triangle": "Triángulo mediano",
+  "small-triangle": "Triángulo pequeño",
+  "diamond": "Cuadrado",
+  "parallelogram": "Paralelogramo"
+};
+
+
 const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas = [], nivelActual, solucionInicial = [], piezasPermitidas = [], currentUser }) => {
   const [pieces, setPieces] = useState([]);
   const [selectedPieceId, setSelectedPieceId] = useState(null);
@@ -294,6 +304,8 @@ const handleRotatePiece = (id, angle) => {
       return !piezasBloqueadas.some(p => p.id === pieceId);
     case 4:
       return piezasPermitidas.includes(pieceId);
+    case 5:
+      return piezasPermitidas.includes(pieceId);
     default:
       return true;
   }
@@ -349,7 +361,7 @@ const handleRotatePiece = (id, angle) => {
           <option value="">Selecciona una pieza</option>
           {pieces.map(piece => (
             <option key={piece.id} value={piece.id}>
-              {piece.shape}
+              {shapeLabels[piece.shape] || piece.shape}
             </option>
           ))}
         </select>

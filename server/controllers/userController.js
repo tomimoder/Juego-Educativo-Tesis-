@@ -23,6 +23,9 @@ const login = async (req, res) => {
 
     const user = users[0];
 
+    // 🔸 Actualizar status a 'playing'
+    await pool.query("UPDATE users SET status = 'playing' WHERE id = ?", [user.id]);
+
     // 🔹 Guardar usuario en cookie HTTPOnly
     res.cookie("userSession", JSON.stringify({
       id: user.id,

@@ -121,7 +121,7 @@ function initializeSocket(server) {
           socket.join(`chatGroup_${chatGroupId}`);
           socket.emit('chatGroupJoined', { chatGroupId });
 
-           // Obtener el nivel del compañero
+          // Obtener el nivel del compañero
           const [members] = await connection.query(`
             SELECT user_id, current_level_id 
             FROM users u
@@ -164,30 +164,31 @@ function initializeSocket(server) {
             io.to(groups[chatGroupId].players[1].socketId).emit('piecesAssignment', { pieces: assignmentPlayer2 });
 
             console.log(
-              `📤 Piezas asignadas (grupo existente): Usuario ${groups[chatGroupId].players[0].userId} => ${assignmentPlayer1}, Usuario ${
-                groups[chatGroupId].players[1].userId
+              `📤 Piezas asignadas (grupo existente): Usuario ${groups[chatGroupId].players[0].userId} => ${assignmentPlayer1}, Usuario ${groups[chatGroupId].players[1].userId
               } => ${assignmentPlayer2}`
             );
           } else {
-            const player = groups[chatGroupId].players.find((p) => p.userId === user.id);
-            if (player) {
+            const player = groups[chatGroupId]?.players.find((p) => p.userId === user.id);
+
+            if (
+              groups[chatGroupId] &&
+              groups[chatGroupId].assignmentsByUser &&
+              groups[chatGroupId].assignmentsByUser[user.id]
+            ) {
               const assigned = groups[chatGroupId].assignmentsByUser[user.id];
-              if (assigned) {
-                socket.emit('piecesAssignment', { pieces: assigned });
-                console.log(`♻️ Piezas reasignadas a ${user.id} tras reconexión:`, assigned);
-              } else {
-                console.log(`⌛ Usuario ${user.id} ya registrado pero sin piezas asignadas todavía`);
-              }
+              socket.emit('piecesAssignment', { pieces: assigned });
+              console.log(`♻️ Piezas reasignadas a ${user.id} tras reconexión:`, assigned);
             } else {
-              console.log(`❌ Usuario ${user.id} no está en memoria en players del grupo ${chatGroupId}`);
+              console.warn(`⚠️ No se encontró assignment para user ${user.id} en grupo ${chatGroupId}`);
             }
+
           }
 
           await emitGroupsUpdate();
           return;
         }
 
-        const [userResult] = await connection.query(`SELECT nivel_curso, nombre, apellido FROM users WHERE id = ?`, [user.id]);
+        const [userResult] = await connection.query(`SELECT nivel_curso, nombre, apellido FROM users WHERE id = ?`, [user.id]); //falta agregar colegio 
 
         const userNivelCurso = userResult[0]?.nivel_curso;
         const userName = userResult[0]?.nombre;
@@ -217,9 +218,15 @@ function initializeSocket(server) {
           socket.emit('waiting', { message: `Esperando a otro usuario de ${userNivelCurso} para emparejar...` });
           console.log(`⌛ Usuario ${user.id} esperando pareja del nivel ${userNivelCurso}`);
         } else {
-          const waitingUser = waitingUsers.find((u) => u.nivel_curso === userNivelCurso);
+          // Evitar que el usuario se empareje consigo mismo
+          const waitingUser = waitingUsers.find(
+            (u) => u.nivel_curso === userNivelCurso && u.userId !== user.id
+          );
 
           if (!waitingUser) {
+            // Eliminar si ya estaba en espera (protección contra doble conexión)
+            waitingUsers = waitingUsers.filter((u) => u.userId !== user.id);
+
             waitingUsers.push({
               socket: socket,
               userId: user.id,
@@ -235,15 +242,21 @@ function initializeSocket(server) {
               waitingSince: u.waitingSince,
             })));
 
-            socket.emit('waiting', { message: `Esperando a otro usuario de ${userNivelCurso} para emparejar...` });
-            console.log(`🚫 Usuario ${user.id} no coincide con nivel ${waitingUser?.nivel_curso} del usuario en espera`);
+            socket.emit('waiting', {
+              message: `Esperando a otro usuario de ${userNivelCurso} para emparejar...`
+            });
+
+            console.log(`🚫 Usuario ${user.id} no encontró pareja válida en espera`);
             return;
           }
+
 
           const socket1 = waitingUser.socket;
           const socket2 = socket;
           const userId1 = waitingUser.userId;
           const userId2 = user.id;
+
+          console.log(`👥 Usuario ${userId1} y ${userId2} emparejados para chat`);
 
           waitingUsers = waitingUsers.filter((u) => u.userId !== userId1);
 
@@ -286,11 +299,12 @@ function initializeSocket(server) {
               { socketId: socket2.id, userId: userId2 },
             ],
             piecesAssigned: true,
-            assignments: {
-              [socket1.id]: assignmentPlayer1,
-              [socket2.id]: assignmentPlayer2,
+            assignmentsByUser: {
+              [userId1]: assignmentPlayer1,
+              [userId2]: assignmentPlayer2,
             },
           };
+
 
           io.to(socket1.id).emit('piecesAssignment', { pieces: assignmentPlayer1 });
           io.to(socket2.id).emit('piecesAssignment', { pieces: assignmentPlayer2 });
@@ -435,10 +449,10 @@ function initializeSocket(server) {
       let connection;
       try {
         connection = await pool.getConnection();
-    
+
         // Convertir levelId a número
         const numericLevelId = Number(levelId);
-    
+
         // Actualizar el nivel del usuario en la base de datos
         const [updateResult] = await connection.query(
           `UPDATE users SET current_level_id = ? WHERE id = ?`,
@@ -447,34 +461,34 @@ function initializeSocket(server) {
         console.log(`✅ Nivel actualizado para usuario ${userId}: ${numericLevelId}`, {
           rowsAffected: updateResult.affectedRows,
         });
-    
+
         // Verificar que la actualización fue exitosa
         if (updateResult.affectedRows === 0) {
           throw new Error(`No se encontró usuario con id ${userId}`);
         }
-    
+
         // Obtener el grupo de chat del usuario
         const [groupResult] = await connection.query(
           `SELECT chat_group_id FROM userchatgroups WHERE user_id = ?`,
           [userId]
         );
-    
+
         if (groupResult.length > 0) {
           const chatGroupId = groupResult[0].chat_group_id;
-    
+
           // Obtener los miembros del grupo
           const [members] = await connection.query(
             `SELECT user_id FROM userchatgroups WHERE chat_group_id = ? AND user_id != ?`,
             [chatGroupId, userId]
           );
-    
+
           if (members.length > 0) {
             const partnerId = members[0].user_id;
             // Notificar al compañero con el nivel como número
             io.to(`chatGroup_${chatGroupId}`).emit('partnerLevelUpdate', { partnerLevel: numericLevelId });
             console.log(`📤 Notificando a grupo ${chatGroupId} que usuario ${userId} está en nivel ${numericLevelId}`);
           }
-    
+
           // Forzar actualización de grupos
           await emitGroupsUpdate();
           console.log(`🔄 Forzando actualización de grupos tras cambio de nivel para usuario ${userId}`);

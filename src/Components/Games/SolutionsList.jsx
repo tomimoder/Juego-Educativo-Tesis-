@@ -43,58 +43,48 @@ const SolutionsList = ({ levelId }) => {
         }
     };
 
-    const fetchLatestSolutions = async (page) => {
+    const fetchLatestSolutions = async () => {
         try {
             setIsLoading(true);
-
             const user = await fetchUser();
-            if (!user) {
-                setIsLoading(false);
-                return;
+            if (!user) return;
+
+            let apiUrl;
+
+            if (levelId === "3") {
+            apiUrl = `${VITE_API_URL}/api/levels/assigned-solutions-level3/${levelId}/${user.id}`;
+            } else {
+            apiUrl = `${VITE_API_URL}/api/levels/assigned-solutions/${levelId}/${user.id}`;
             }
 
-            const response = await fetch(
-                `${VITE_API_URL}/api/solutions/${levelId}?page=${page}&limit=${itemsPerPage}&userId=${user.id}`,
-                {
-                    method: "GET",
-                    credentials: "include",
-                }
-            );
+            const response = await fetch(apiUrl, {
+            method: "GET",
+            credentials: "include",
+            });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error("❌ Error obteniendo soluciones:", errorData.message || response.statusText);
-                setLatestSolutions([]);
-                setTotalPages(1);
-                return;
+            setLatestSolutions([]);
+            return;
             }
 
             const data = await response.json();
-
-            if (data && data.solutions.length > 0) {
-                setLatestSolutions(data.solutions);
-                setTotalPages(Math.ceil(data.total / itemsPerPage));
-
-                // ✅ Intentar desbloquear nivel automáticamente
-                await tryUnlockNextLevel(user.id);
-            } else {
-                setLatestSolutions([]);
-                setTotalPages(1);
-            }
+            setLatestSolutions(data.solutions || []);
+            await tryUnlockNextLevel(user.id);
         } catch (error) {
             console.error("❌ Error al obtener soluciones:", error);
             setLatestSolutions([]);
-            setTotalPages(1);
         } finally {
             setIsLoading(false);
         }
-    };
+        };
 
-    useEffect(() => {
+
+        useEffect(() => {
         if (levelId) {
-            fetchLatestSolutions(currentPage);
+            fetchLatestSolutions();
         }
-    }, [currentPage, levelId]);
+        }, [levelId]);
+
 
     if (isLoading) {
         return (
@@ -118,7 +108,7 @@ const SolutionsList = ({ levelId }) => {
                         <SolutionView
                             key={solution.id}
                             solution={solution}
-                            onRatingUpdated={() => fetchLatestSolutions(currentPage)} // ✅ se vuelve a verificar
+                            onRatingUpdated={() => fetchLatestSolutions()} // ✅ se vuelve a verificar
                             previewWidth={950}
                             previewHeight={550}
                             scaleFactor={1}
