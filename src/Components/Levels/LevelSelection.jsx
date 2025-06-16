@@ -5,7 +5,7 @@ import { Button } from "../ui/button"; // Importamos el botón reutilizable
 
 const LevelButton = ({ level, name, unlocked, stars, completed, onClick, handleLevelSelect }) => {
   const navigate = useNavigate();
-  const VITE_API_URL = "http://192.168.7.203:3001";
+  const VITE_API_URL = "http://192.168.56.1:3001";
 
   const handleViewSolutions = () => {
     navigate(`/solutions/${level}`);
@@ -97,7 +97,7 @@ export default function LevelSelection() {
   const navigate = useNavigate();
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
-  const VITE_API_URL = "http://192.168.7.203:3001";
+  const VITE_API_URL = "http://192.168.56.1:3001";
 
   useEffect(() => {
     const fetchLevels = async () => {

@@ -17,7 +17,7 @@ import LevelStatistics from './Components/Levels/LevelStatistics';
 window.process = process;
 
 function App() {
-  const VITE_API_URL = "http://192.168.7.203:3001"
+  const VITE_API_URL = "http://192.168.56.1:3001"
 
 
   

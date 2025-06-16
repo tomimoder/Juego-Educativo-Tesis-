@@ -25,9 +25,29 @@ const ConsentForm = ({ onAccept, onReject }) => {
           }`}
         >
           <p className="text-gray-700 text-sm sm:text-base whitespace-pre-line">
-            Al utilizar nuestra aplicación, aceptas nuestros términos y condiciones...
-            {/* Texto sin cambios */}
-          </p>
+  {`FORMULARIO DE ASENTIMIENTO PARA ENCUESTA A MENOR DE EDAD
+
+Estimado estudiante:
+
+El propósito de este documento es entregarte toda la información necesaria para que puedas decidir si quieres participar o no en un proyecto de investigación que estamos realizando en tu escuela. El objetivo de este estudio es diseñar, implementar y estudiar actividades digitales que utilizan tecnología para conocer cuáles son tus habilidades de colaboración, comunicación, creatividad y pensamiento crítico, y ayudarte a desarrollarlas.
+
+Antes de tomar esta decisión, es importante que sepas lo siguiente:
+
+1. Tu participación en este estudio ha sido autorizada por tus padres; sin embargo, si tú prefieres no participar, nadie te puede obligar a hacerlo.
+
+2. Tu participación consiste en realizar una serie de actividades digitales, como simulaciones y videojuegos, que registrarán tus respuestas y cómo interactúas con ellas. Estas actividades durarán aproximadamente 1 hora y media y se realizarán en tu escuela. Nadie (ni tus padres, ni tus profesores, ni tus compañeros) conocerá tus respuestas: es decir, tu participación será confidencial, sin que se dé a conocer tu nombre. Tu participación es voluntaria, puedes no contestar ciertas preguntas o retirarte en cualquier momento; el que tú decidas no participar o no contestar todas las preguntas no tendrá ninguna consecuencia para ti; ni tus padres ni tus profesores o compañeros sabrán si tú decidiste participar o no en el estudio.
+
+3. Tus respuestas serán utilizadas únicamente para los fines de esta investigación.
+
+4. Tu participación es voluntaria; puedes decidir no participar en cualquier momento, y si eliges no participar o no contestar todas las preguntas, no tendrá ninguna consecuencia para ti. Ni tus padres, ni tus profesores, ni tus compañeros sabrán si decidiste participar o no en el estudio.
+
+5. Es importante que sepas que no hay beneficios personales para ti al participar en este proyecto, pero tampoco tendrás molestias, más allá de estar ese tiempo realizando las actividades digitales en el computador o tablet.
+
+6. En el caso que tengas más preguntas sobre esta investigación, se las puedes hacer a la persona que está dirigiendo la actividad, o puedes pedirle a tus padres que te ayuden a contactarte con la Investigadora Responsable del estudio, quien con mucho gusto responderá tus dudas.
+
+Declaro que he leído y comprendido esta página y estoy de acuerdo en participar en este estudio.`}
+</p>
+
         </div>
         <div className="mb-4 text-right">
           <button
@@ -71,7 +91,7 @@ export default function Login({ onLogin }) {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  const VITE_API_URL = "http://192.168.7.203:3001";
+  const VITE_API_URL = "http://192.168.56.1:3001";
 
   useEffect(() => {
     fetchSchools();

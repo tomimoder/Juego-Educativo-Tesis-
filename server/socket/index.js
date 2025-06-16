@@ -14,7 +14,7 @@ function initializeSocket(server) {
     cors: {
       origin: [
         'http://localhost:3000',
-        'http://192.168.7.203:3000',
+        'http://192.168.56.1:3000',
         'https://magisters.pages.dev',
       ],
       methods: ['GET', 'POST'],
@@ -392,22 +392,20 @@ function initializeSocket(server) {
         const connection = await pool.getConnection();
 
         const [solutions] = await connection.query(
-          `
-          SELECT uts.solution_data, 
-                 uts.description,
-                 (SELECT word 
-                  FROM solution_alternative_votes sav 
-                  WHERE sav.solution_id = uts.id 
-                  GROUP BY sav.word 
-                  ORDER BY COUNT(*) DESC 
-                  LIMIT 1) AS most_voted_alternative
-          FROM usertangramsolutions uts
-          WHERE uts.level_id = ?
-          ORDER BY uts.average_rating DESC, uts.total_ratings DESC
-          LIMIT 1
-          `,
-          [levelId]
-        );
+  `
+  SELECT uts.solution_data, 
+         uts.description,
+         (SELECT word 
+          FROM solution_alternative_votes sav 
+          WHERE sav.solution_id = uts.id 
+          GROUP BY sav.word 
+          ORDER BY COUNT(*) DESC 
+          LIMIT 1) AS most_voted_alternative
+  FROM usertangramsolutions uts
+  ORDER BY uts.average_rating DESC, uts.total_ratings DESC
+  LIMIT 1
+  `
+);
 
         connection.release();
 
