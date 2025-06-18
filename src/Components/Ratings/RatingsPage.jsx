@@ -7,7 +7,7 @@ export default function RatingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const VITE_API_URL = "http://192.168.56.1:3001";
+  const VITE_API_URL = "http://192.168.0.137:3001";
 
   useEffect(() => {
     const fetchData = async () => {

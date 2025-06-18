@@ -9,7 +9,7 @@ const SolutionsList = ({ levelId }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [unlocked, setUnlocked] = useState(false); // ✅ NUEVO estado
     const itemsPerPage = 5;
-    const VITE_API_URL = "http://192.168.56.1:3001";
+    const VITE_API_URL = "http://172.17.0.1:3001";
 
     const fetchUser = async () => {
         try {
@@ -68,6 +68,7 @@ const SolutionsList = ({ levelId }) => {
             }
 
             const data = await response.json();
+            console.log(data);
             setLatestSolutions(data.solutions || []);
             await tryUnlockNextLevel(user.id);
         } catch (error) {

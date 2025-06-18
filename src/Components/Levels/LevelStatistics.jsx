@@ -10,7 +10,7 @@ export default function LevelStatistics() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [timer, setTimer] = useState(120); // 2 minutos
-  const API_URL = "http://192.168.7.203:3001";
+  const API_URL = "http://172.17.0.1:3001";
 
   useEffect(() => {
     const fetchStats = async () => {

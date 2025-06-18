@@ -14,7 +14,7 @@ function initializeSocket(server) {
     cors: {
       origin: [
         'http://localhost:3000',
-        'http://192.168.56.1:3000',
+        'http://192.168.0.137:3000',
         'https://magisters.pages.dev',
       ],
       methods: ['GET', 'POST'],
@@ -267,11 +267,11 @@ function initializeSocket(server) {
             waitingSince: u.waitingSince,
           })));
 
-          const [result] = await connection.query('SELECT MAX(id) as maxId FROM ChatGroups');
+          const [result] = await connection.query('SELECT MAX(id) as maxId FROM chatgroups');
           const chatGroupId = (result[0].maxId || 0) + 1;
 
           await connection.beginTransaction();
-          await connection.query('INSERT INTO ChatGroups (id, name) VALUES (?, ?)', [chatGroupId, `Chat Group ${chatGroupId}`]);
+          await connection.query('INSERT INTO chatgroups (id, name) VALUES (?, ?)', [chatGroupId, `Chat Group ${chatGroupId}`]);
           await connection.query(
             'INSERT INTO userchatgroups (chat_group_id, user_id) VALUES (?, ?), (?, ?)',
             [chatGroupId, userId1, chatGroupId, userId2]
