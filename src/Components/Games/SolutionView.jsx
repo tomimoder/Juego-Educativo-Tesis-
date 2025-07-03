@@ -6,7 +6,7 @@ const formatRating = (rating) => {
 };
 
 const fetchUser = async () => {
-  const VITE_API_URL = "http://172.17.0.1:3001"
+  const VITE_API_URL = "http://192.168.7.243:3001"
 
   try {
     const response = await fetch(`${VITE_API_URL}/api/me`, {

@@ -68,7 +68,7 @@ function GameInterface() {
   const [selectedWord, setSelectedWord] = useState(null); // para atributos u otras selecciones
 
 
-  const VITE_API_URL = "http://172.17.0.1:3001"
+  const VITE_API_URL = "http://192.168.7.243:3001"
 
   const togglePiecesViability = () => setIsPiecesViable(!isPiecesViable)
 

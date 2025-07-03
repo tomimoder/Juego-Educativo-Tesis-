@@ -18,7 +18,7 @@ const TangramBoard = ({ updateSolution, onPieceMoved, socket, piezasBloqueadas =
   const boardRef = useRef(null);
   const initializedRef = useRef(false);
   const isMobile = window.innerWidth < 768;
-  const VITE_API_URL = "http://192.168.0.137:3001"
+  const VITE_API_URL = "http://192.168.7.243:3001"
 
   useEffect(() => {
     if (boardRef.current && !initializedRef.current) {

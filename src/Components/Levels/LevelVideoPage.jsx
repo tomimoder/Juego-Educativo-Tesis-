@@ -7,7 +7,7 @@ const LevelVideoPage = () => {
   const navigate = useNavigate();
   const [videoEnded, setVideoEnded] = useState(false);
   const [levelData, setLevelData] = useState(null);
-  const VITE_API_URL = "http://172.17.0.1:3001";
+  const VITE_API_URL = "http://192.168.7.243:3001";
 
   const validLevels = ["1", "2", "3", "4"];
 

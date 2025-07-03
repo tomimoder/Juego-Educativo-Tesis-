@@ -7,7 +7,7 @@ const formatRating = (rating) => {
 };
 
 const fetchUser = async () => {
-  const VITE_API_URL = "http://172.17.0.1:3001"
+  const VITE_API_URL = "http://192.168.7.243:3001"
 
   try {
     const response = await fetch(`${VITE_API_URL}/api/me`, {
@@ -62,9 +62,9 @@ const SolutionsPage = ({
   const [isLoading, setIsLoading] = useState(false);
   const [similarWords, setSimilarWords] = useState([]);
   const [hasVoted, setHasVoted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutos fijos
+  const [timeLeft, setTimeLeft] = useState(150); // 5 minutos fijos
   const [timerFinished, setTimerFinished] = useState(false); // Saber si terminó el tiempo
-  const VITE_API_URL = "http://172.17.0.1:3001"
+  const VITE_API_URL = "http://192.168.7.243:3001"
 
 
   useEffect(() => {
@@ -278,7 +278,7 @@ const SolutionsPage = ({
 
   useEffect(() => {
   if (solutions.length > 0) {
-    setTimeLeft(300); // o cualquier duración por nivel (en segundos)
+    setTimeLeft(150); // o cualquier duración por nivel (en segundos)
   }
 }, [solutions]);
 

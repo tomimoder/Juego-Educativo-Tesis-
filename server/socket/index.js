@@ -14,7 +14,7 @@ function initializeSocket(server) {
     cors: {
       origin: [
         'http://localhost:3000',
-        'http://192.168.0.137:3000',
+        'http://192.168.7.243:3000',
         'https://magisters.pages.dev',
       ],
       methods: ['GET', 'POST'],
@@ -222,6 +222,7 @@ function initializeSocket(server) {
           const waitingUser = waitingUsers.find(
             (u) => u.nivel_curso === userNivelCurso && u.userId !== user.id
           );
+          
 
           if (!waitingUser) {
             // Eliminar si ya estaba en espera (protección contra doble conexión)
@@ -247,6 +248,16 @@ function initializeSocket(server) {
             });
 
             console.log(`🚫 Usuario ${user.id} no encontró pareja válida en espera`);
+            return;
+          }
+
+          const [partnerGroup] = await connection.query(
+            `SELECT chat_group_id FROM userchatgroups WHERE user_id = ?`,
+            [waitingUser.userId]
+          );
+        
+          if (partnerGroup.length > 0) {
+            console.log(`🚫 Usuario ${waitingUser.userId} ya está en un grupo. Cancelando emparejamiento.`);
             return;
           }
 
