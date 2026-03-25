@@ -21,15 +21,6 @@ Este repositorio contiene el código fuente de un juego educativo diseñado para
 - Backend: NodeJS + Express
 - Base de Datos: MySQL
 
-## Instalación
-
-### Requisitos previos
-
-- Node.js (v14 o superior)
-- npm o yarn
-
-### Pasos de instalación
-
 1. Clona el repositorio
 
 ```bash
